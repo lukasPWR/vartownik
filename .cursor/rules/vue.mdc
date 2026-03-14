@@ -1,0 +1,83 @@
+---
+globs: frontend/src/*.vue,frontend/src/*.ts
+alwaysApply: false
+---
+
+# VueJS 3 Development Guidelines
+
+## Architecture
+
+- Prefer Composition API (setup and composables) over Options API
+- Organize components and composables by feature/domain; separate presentational vs container
+- Extract reusable logic into `composables/`; structure Pinia stores per domain
+
+## TypeScript
+
+- Enable `strict` in `tsconfig.json`
+- Use `<script setup lang="ts">` with `defineProps`/`defineEmits`; use `PropType<T>` where needed
+- Define types for events, refs, and router hooks; use interfaces/aliases for complex shapes
+
+## Components
+
+- Single responsibility; small, focused components
+- PascalCase component names; kebab-case filenames
+- Prefer `<script setup>`; validate props via TS; prefer slots/scoped slots
+
+## State
+
+- Use Pinia for global state; use `ref`/`reactive` for local state
+- Use `computed` for derived state; keep complex data normalized
+
+## Composition patterns
+
+- Build reusable composables (e.g., `useAuth`, `useForm`)
+- Use `watch`/`watchEffect` carefully with precise deps and cleanups
+- Use `provide`/`inject` sparingly; prefer props unless drilling is excessive
+
+## Styling
+
+- Prefer Tailwind CSS; keep `<style scoped>` for small exceptions
+- Use design tokens via CSS variables and Tailwind config; mobile-first layouts
+
+## Data fetching
+
+- In non-Nuxt apps, use `fetch`/`axios` within composables (e.g., `useApi`)
+- Consider TanStack Query (Vue Query) for caching and background revalidation
+- Handle loading/error/success explicitly; cancel outdated requests with `AbortController`
+
+## Routing
+
+- Use Vue Router 4; lazy-load routes via dynamic imports; guard routes as needed
+
+## Vite & config
+
+- Use `@` alias to `src/`; use `import.meta.env` (prefix `VITE_`)
+- Keep Vite plugins minimal; name chunks when necessary
+
+## UI (shadcn-vue)
+
+- Use shadcn-vue components and extend with Tailwind; ensure a11y (roles/aria, focus)
+
+## Error handling
+
+- Global `app.config.errorHandler`; local `errorCaptured`; user-friendly fallbacks
+
+## Forms & validation
+
+- Use VeeValidate or similar; `v-model` for controlled inputs; debounce where needed
+
+## Security
+
+- Avoid `v-html`; configure CSP on server or via meta; use HTTPS; store tokens in HTTP-only cookies
+
+## Performance
+
+- Lazy-load components, use `<Suspense>`, `v-once`/`v-memo`; profile with DevTools; avoid redundant watchers
+
+## Accessibility
+
+- Semantic HTML, ARIA attributes, keyboard navigation, focus management, WCAG AA contrast
+
+## Testing
+
+- Vitest + Vue Test Utils for unit tests; Playwright/Cypress for e2e

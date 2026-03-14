@@ -1,0 +1,67 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# AI Rules for {app-name}
+
+{project-description}
+
+## Tech Stack
+
+- Astro 5 (SSR, `output: "server"`, adapter: `@astrojs/node`)
+- TypeScript 5
+- Vue 3 (Composition API, `<script setup>`) — wyspy interaktywne
+- Tailwind 4
+- shadcn-vue + Radix Vue — komponenty UI
+- Nano Stores (`nanostores` + `@nanostores/vue`) — lekki state manager między wyspami
+- Supabase (PostgreSQL + pgvector, Auth, Storage, Edge Functions)
+- lucide-vue-next — ikony
+
+## TypeScript Usage
+
+- Always use TypeScript for all code.
+- Enable strict mode in tsconfig.json.
+- Use explicit types for function parameters and returns.
+
+## Project Structure
+
+When introducing changes to the project, always follow the directory structure below:
+
+- `./src` - source code
+- `./src/layouts` - Astro layouts
+- `./src/pages` - Astro pages
+- `./src/pages/api` - API endpoints
+- `./src/middleware/index.ts` - Astro middleware
+- `./src/db` - Supabase clients and types
+- `./src/types.ts` - Shared types for backend and frontend (Entities, DTOs)
+- `./src/components` - Komponenty Astro (statyczne) i Vue 3 (interaktywne wyspy)
+- `./src/components/ui` - Komponenty UI z shadcn-vue
+- `./src/composables` - Vue composables (wyodrębniona logika, hooki)
+- `./src/stores` - Nano Stores (współdzielony stan między wyspami Vue)
+- `./src/lib` - Services and helpers 
+- `./src/assets` - static internal assets
+- `./public` - public assets
+
+When modifying the directory structure, always update this section.
+
+## Coding practices
+
+### Guidelines for clean code
+
+- Use feedback from linters to improve the code when making changes.
+- Prioritize error handling and edge cases.
+- Handle errors and edge cases at the beginning of functions.
+- Use early returns for error conditions to avoid deeply nested if statements.
+- Place the happy path last in the function for improved readability.
+- Avoid unnecessary else statements; use if-return pattern instead.
+- Use guard clauses to handle preconditions and invalid states early.
+- Implement proper error logging and user-friendly error messages.
+- Consider using custom error types or error factories for consistent error handling.
+
+## Naming Conventions
+
+- Variables and functions: camelCase
+- Classes and components: PascalCase
+- Constants: UPPER_CASE
+- Interfaces: PascalCase with 'I' prefix if needed, but prefer without.
