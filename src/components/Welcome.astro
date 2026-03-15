@@ -6,7 +6,6 @@ import prettierPkg from "prettier/package.json";
 
 const ver = (v: string) => v.replace(/[\^~]/, "");
 const astroVersion = ver(pkg.dependencies.astro);
-const reactVersion = ver(pkg.dependencies.react);
 const tailwindVersion = ver(pkg.dependencies.tailwindcss);
 const typescriptVersion = ver(pkg.devDependencies.typescript);
 const eslintVersion = ver(pkg.devDependencies.eslint);
@@ -44,10 +43,6 @@ const supabaseVersion = ver(pkg.dependencies["@supabase/supabase-js"]);
             <li class="flex items-center space-x-3">
               <LibBadge name="Astro" version={astroVersion} />
               <span class="text-blue-100/90">- Metaframework do aplikacji webowych</span>
-            </li>
-            <li class="flex items-center space-x-3">
-              <LibBadge name="React" version={reactVersion} />
-              <span class="text-blue-100/90">- Biblioteka UI do komponentów interaktywnych</span>
             </li>
             <li class="flex items-center space-x-3">
               <LibBadge name="TypeScript" version={typescriptVersion} />

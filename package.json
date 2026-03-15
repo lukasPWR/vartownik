@@ -1,5 +1,5 @@
 {
-  "name": "10x-astro-starter",
+  "name": "vartownik",
   "type": "module",
   "version": "0.0.1",
   "scripts": {
@@ -48,7 +48,7 @@
     "husky": "9.1.7",
     "lint-staged": "^16.3.3",
     "prettier-plugin-astro": "0.14.1",
-    "supabase": "^2.23.4",
+    "supabase": "^2.78.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.57.0"
   },
