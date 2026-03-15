@@ -2,156 +2,235 @@
 
 ## 1. Przegląd produktu
 
-VARtownik to aplikacja internetowa typu MVP przeznaczona dla pasjonatów piłkarskich quizów. System umożliwia trening w oparciu o specyficzną strukturę pytań znaną z profesjonalnych quizów piłkarskich. Sercem aplikacji jest silnik AI (RAG), który generuje nowe pytania na podstawie dostarczonej bazy wiedzy, oraz system VAR, który inteligentnie weryfikuje odpowiedzi użytkownika, eliminując frustrację wynikającą z drobnych literówek.
+VARtownik to zaawansowany symulator turniejowy klasy Ekspert, zaprojektowany dla uczestników profesjonalnych quizów piłkarskich (np. PilkarskiQuiz.pl). Aplikacja ma na celu odwzorowanie rygorystycznych warunków zawodów, kładąc nacisk na wysoką trudność merytoryczną, presję czasu oraz konieczność szybkiego przełączania kontekstów między różnymi kategoriami piłkarskimi. System opiera się na silniku AI generującym unikalne zestawy pytań oraz module symulacji wymuszającym skupienie i rzetelną samoocenę. Technologicznie projekt bazuje na frameworku Astro, bazie Supabase oraz integracji z modelami LLM poprzez Prompt Engineering.
 
 ## 2. Problem użytkownika
 
-Uczestnicy piłkarskich quizów potrzebują narzędzia, które:
+Uczestnicy elitarnych turniejów wiedzy piłkarskiej borykają się z brakiem dedykowanych narzędzi treningowych, które oferowałyby poziom trudności wyższy niż ogólnodostępne aplikacje mobilne. Kluczowe problemy to:
 
-- Odzwierciedla realny format pytań konkursowych.
+- Zbyt niskie skomplikowanie pytań w popularnych quizach.
     
-- Pozwala na nielimitowany trening (generowanie pytań przez AI).
+- Brak treningu pod presją czasu (wymóg odpowiedzi w 15-30 sekund).
     
-- Jest elastyczne w ocenie odpowiedzi (rozpoznaje synonimy i błędy w pisowni).
+- Monotematyczność zestawów treningowych – użytkownicy potrzebują wymieszanych kategorii (np. statystyki obok historii polskiej piłki), aby trenować elastyczność umysłową.
     
-- Pozwala na szybkie zasilenie bazy wiedzy gotowymi zestawami danych w formacie cyfrowym.
+- Brak możliwości gromadzenia własnej, zweryfikowanej bazy trudnych pytań do powtórek.
     
 
 ## 3. Wymagania funkcjonalne
 
-### 3.1. Moduł Zarządzania Bazą Danych (Tylko Admin)
+### 3.1. Moduł Generowania AI (Generator)
 
-- Bezpośredni import plików JSON do bazy danych aplikacji.
+- Generowanie kompletnej paczki 40 pytań (4 rundy po 10 pytań) w jednej sesji API w celu zapewnienia spójności i szybkości działania UI.
     
-- Walidacja struktury importowanego pliku JSON pod kątem wymaganych pól (pytanie, odpowiedź, kategoria, trudność).
+- Implementacja Few-Shot Prompting w celu wymuszenia poziomu Ekspert (wymóg min. dwóch parametrów w pytaniu, np. postać + rok + klub).
     
-- Możliwość manualnego dodawania, edycji i usuwania rekordów z poziomu panelu administratora.
+- Miksowanie kategorii tematycznych wewnątrz każdej rundy zgodnie ze zdefiniowanymi wagami (np. Ekstraklasa, Historia MŚ/Euro, Statystyki, Piłka zagraniczna, Reprezentacja Polski).
     
-- Przechowywanie zdjęć dla pytań tworzonych manualnie w chmurze (np. AWS S3).
-    
-
-### 3.2. Generator Pytań AI (RAG)
-
-- Wykorzystanie technologii RAG do generowania pytań tekstowych wyłącznie na podstawie zaimportowanej bazy JSON.
-    
-- Style Guide (Few-shot) w panelu Admina do definiowania tonu i trudności pytań.
-    
-- Mechanizm Optimistic UI: generowanie treści w tle podczas interakcji użytkownika z interfejsem.
+- Mechanizm Retry (maksymalnie 2 próby) w przypadku otrzymania nieprawidłowego formatu JSON z API.
     
 
-### 3.3. System Weryfikacji VAR
+### 3.2. Silnik Gry (Game Engine)
 
-- Dwuetapowa walidacja: najpierw algorytm Levenshteina, następnie LLM dla kontekstowej weryfikacji synonimów.
+- Licznik czasu (Timer) per pytanie ustawiony w przedziale 15-30 sekund.
     
-- Logowanie decyzji VAR w celu optymalizacji promptów i bazy wiedzy.
+- Blokada wprowadzania odpowiedzi po upływie czasu.
+    
+- Scratchpad: Pole tekstowe dla użytkownika do wpisania roboczej odpowiedzi przed jej formalnym odkryciem.
+    
+- Brak funkcji pauzy oraz zapisu stanu w trakcie trwania rundy (odświeżenie strony przerywa quiz).
+    
+- Wyświetlanie poprawnych odpowiedzi zbiorczo dopiero po zakończeniu danej rundy (10 pytań).
     
 
-### 3.4. Silnik Quizu i System Kont
+### 3.3. System Weryfikacji i Postępu
 
-- Rejestracja i logowanie użytkowników (e-mail/hasło).
+- Model samooceny: Użytkownik samodzielnie oznacza na ekranie podsumowania rundy, czy jego odpowiedź była poprawna (Wiedziałem / Nie wiedziałem).
     
-- Tryby gry: Szybki Trening, Pełny Quiz, Maraton oraz tryb Custom (wybor czasu i rund).
+- Zapisywanie pełnej historii odpowiedzi: ID pytania, treść scratchpadu, werdykt użytkownika oraz czas reakcji.
     
-- System punktacji i prezentacji wyników po zakończeniu sesji.
+- Przypisywanie difficulty_score (skala 1-5) do każdego pytania w bazie danych.
+    
+
+### 3.4. Panel Zarządzania (CRUD)
+
+- Możliwość manualnego dodawania, edycji i usuwania pytań z własnej bazy.
+    
+- System flagowania: Pytania oznaczone jako błędne (np. halucynacja AI) otrzymują status flagged i są wykluczane z rotacji do czasu ręcznej korekty.
+    
+- Obsługa załączników binarnych (obrazków) przez Supabase Storage dla pytań dodawanych ręcznie.
+    
+
+### 3.5. Bezpieczeństwo i Architektura
+
+- System autoryzacji oparty na Supabase Auth.
+    
+- Implementacja Row Level Security (RLS) od początku projektu, zapewniająca izolację danych (każdy użytkownik ma dostęp wyłącznie do swoich quizów i statystyk).
+    
+- Loading State: Wyświetlanie rotacyjnej listy ciekawostek piłkarskich podczas oczekiwania na wygenerowanie quizu przez AI.
     
 
 ## 4. Granice produktu
 
-### 4.1. W zakresie MVP
-
-- Interfejs webowy (desktop/mobile web).
+- Brak mechanizmu RAG: Aplikacja opiera się wyłącznie na wiedzy modelu LLM i Prompt Engineeringu.
     
-- Import danych wyłącznie poprzez pliki JSON o określonej strukturze.
+- Brak trybu Multiplayer: Produkt jest narzędziem do treningu indywidualnego.
     
-- System VAR (Levenshtein + LLM).
+- Brak współdzielenia quizów: Baza pytań jest prywatna dla każdego użytkownika.
     
-- Panel Admina do zarządzania bazą i monitorowania jakości AI.
-    
-
-### 4.2. Poza zakresem MVP
-
-- Automatyczne parsowanie plików .pptx (obsługa manualna po stronie Admina).
-    
-- Tryb rywalizacji wieloosobowej (Arena).
-    
-- Udostępnianie quizów między profilami użytkowników.
-    
-- Generowanie grafik przez AI.
+- Brak automatycznej walidacji tekstu (NLP/Regex): System ufa werdyktowi użytkownika w modelu samooceny.
     
 
 ## 5. Historyjki użytkowników
 
-### Bezpieczeństwo i Dostęp
+### US-001: Bezpieczny dostęp do konta
 
-ID: US-001 Tytuł: Rejestracja i uwierzytelnianie Opis: Jako użytkownik chcę założyć konto i bezpiecznie się logować, aby moje postępy w treningu były zapisywane. Kryteria akceptacji:
-
-1. System umożliwia rejestrację przy użyciu unikalnego adresu e-mail.
+- ID: US-001
     
-2. Hasło musi spełniać podstawowe wymogi bezpieczeństwa (min. 8 znaków).
+- Tytuł: Rejestracja i logowanie użytkownika
     
-3. Tylko zalogowany użytkownik ma dostęp do historii swoich quizów.
+- Opis: Jako użytkownik chcę stworzyć chronione hasłem konto, aby moje statystyki i autorskie pytania nie były dostępne dla innych osób.
     
-
-### Zarządzanie Danymi (Admin)
-
-ID: US-002 Tytuł: Ręczny import bazy JSON Opis: Jako administrator chcę wgrać gotowy plik JSON, aby zasilić bazę wiedzy dla silnika AI. Kryteria akceptacji:
-
-1. Panel administratora zawiera pole do uploadu pliku .json.
-    
-2. System odrzuca pliki o nieprawidłowej strukturze (brak wymaganych kluczy).
-    
-3. Po poprawnym imporcie dane są natychmiast dostępne dla modułu RAG.
+- Kryteria akceptacji:
     
 
-ID: US-003 Tytuł: Zarządzanie rekordami i indeksowanie Opis: Jako administrator chcę edytować treść pytań i wymusić aktualizację indeksu AI. Kryteria akceptacji:
-
-1. Admin może wyszukać i edytować dowolne pytanie w bazie.
+1. Użytkownik może zarejestrować się za pomocą adresu e-mail i hasła.
     
-2. Po edycji dostępny jest przycisk Aktualizuj indeks, który odświeża bazę embeddingów dla modelu RAG.
+2. Dane są poprawnie zapisywane w Supabase Auth.
     
-
-### Proces Quizu i System VAR
-
-ID: US-004 Tytuł: Rozpoczęcie treningu z AI Opis: Jako użytkownik chcę wybrać kategorię piłkarską, aby AI wygenerowało dla mnie zestaw pytań treningowych. Kryteria akceptacji:
-
-1. Użytkownik wybiera kategorię z listy (np. Liga Angielska).
+3. Po wylogowaniu dostęp do panelu treningowego i bazy pytań jest zablokowany.
     
-2. Pierwsze pytanie pojawia się w czasie poniżej 3 sekund.
-    
-3. Pytania są generowane w oparciu o styl zdefiniowany w Style Guide.
+4. Użytkownik ma dostęp wyłącznie do rekordów powiązanych z jego user_id (RLS).
     
 
-ID: US-005 Tytuł: Inteligentna weryfikacja odpowiedzi (VAR) Opis: Jako użytkownik chcę, aby system uznał moją odpowiedź, nawet jeśli popełnię literówkę lub użyję powszechnego przydomka piłkarza. Kryteria akceptacji:
+### US-002: Generowanie sesji treningowej
 
-1. System zalicza odpowiedź przy niskim dystansie Levenshteina.
+- ID: US-002
     
-2. W przypadku braku dopasowania tekstowego, LLM analizuje odpowiedź (np. akceptuje "Luluś" dla "Lewandowski", jeśli kontekst na to pozwala).
+- Tytuł: Tworzenie zestawu 40 pytań przez AI
     
-3. Użytkownik otrzymuje jasną informację: Bramka uznana (VAR).
+- Opis: Jako gracz chcę wygenerować pełny zestaw 40 trudnych pytań jednym kliknięciem, aby móc przejść przez pełny cykl turniejowy bez przerw na ładowanie danych.
     
-
-ID: US-006 Tytuł: Reklamacja decyzji VAR Opis: Jako użytkownik chcę zgłosić błąd, gdy system niesłusznie odrzuci moją odpowiedź. Kryteria akceptacji:
-
-1. Po błędnej odpowiedzi dostępny jest przycisk Zgłoś błąd VAR.
-    
-2. Zgłoszenie zapisuje treść pytania, oczekiwaną odpowiedź i propozycję użytkownika w bazie dla Admina.
+- Kryteria akceptacji:
     
 
-### Customizacja sesji
-
-ID: US-007 Tytuł: Tryb Custom Opis: Jako użytkownik chcę ustawić własny czas na odpowiedź, aby dostosować poziom trudności do swoich umiejętności. Kryteria akceptacji:
-
-1. Użytkownik może wybrać czas (1 min lub 3 min) przed startem quizu.
+1. System wysyła jeden prompt do modelu AI.
     
-2. Timer odlicza czas na ekranie i automatycznie przechodzi do następnego pytania po upływie limitu.
+2. AI zwraca 40 pytań podzielonych na 4 rundy.
+    
+3. W każdej rundzie kategorie tematyczne są wymieszane.
+    
+4. Podczas generowania widoczny jest ekran ładowania z ciekawostkami.
+    
+5. Proces trwa nie dłużej niż 40 sekund.
+    
+
+### US-003: Przebieg rundy pod presją
+
+- ID: US-003
+    
+- Tytuł: Obsługa pytania z timerem
+    
+- Opis: Jako gracz chcę, aby każde pytanie miało odliczany czas i pole scratchpadu, aby symulować stres związany z pisaniem odpowiedzi na kartce podczas turnieju.
+    
+- Kryteria akceptacji:
+    
+
+1. Po wyświetleniu pytania timer startuje automatycznie (domyślnie 20s).
+    
+2. Użytkownik może wpisać tekst w scratchpad.
+    
+3. Po upływie czasu pole edycji zostaje zablokowane.
+    
+4. Brak przycisku pauzy na ekranie gry.
+    
+5. Prawidłowa odpowiedź pozostaje ukryta do końca rundy.
+    
+
+### US-004: Samoocena i weryfikacja
+
+- ID: US-004
+    
+- Tytuł: Podsumowanie rundy i weryfikacja wyników
+    
+- Opis: Jako gracz chcę zobaczyć poprawne odpowiedzi po zakończeniu rundy i samodzielnie oznaczyć swój sukces lub porażkę, aby rzetelnie ocenić stan swojej wiedzy.
+    
+- Kryteria akceptacji:
+    
+
+1. Ekran podsumowania wyświetla listę 10 pytań z rundy wraz z odpowiedziami AI oraz notatkami użytkownika ze scratchpadu.
+    
+2. Przy każdym pytaniu znajdują się dwa przyciski: Wiedziałem oraz Nie wiedziałem.
+    
+3. Wynik punktowy rundy jest aktualizowany na podstawie kliknięć.
+    
+4. Przejście do kolejnej rundy jest możliwe dopiero po oznaczeniu wszystkich 10 pytań.
+    
+
+### US-005: Zarządzanie jakością bazy
+
+- ID: US-005
+    
+- Tytuł: Flagowanie i edycja błędnych pytań
+    
+- Opis: Jako użytkownik chcę mieć możliwość poprawienia błędu w pytaniu wygenerowanym przez AI, aby moja baza treningowa nie zawierała nieprawdy.
+    
+- Kryteria akceptacji:
+    
+
+1. Użytkownik może oflagować pytanie jako błędne na ekranie podsumowania.
+    
+2. Oflagowane pytania pojawiają się w dedykowanej zakładce w panelu CRUD.
+    
+3. Użytkownik może ręcznie edytować treść pytania, odpowiedzi oraz kategorię.
+    
+4. Pytanie ze statusem flagged nie jest losowane do przyszłych quizów, dopóki status nie zostanie zmieniony na zweryfikowany.
+    
+
+### US-006: Analiza postępów
+
+- ID: US-006
+    
+- Tytuł: Przegląd historii i statystyk
+    
+- Opis: Jako gracz chcę widzieć swoją skuteczność w poszczególnych kategoriach, aby wiedzieć, jakie obszary wiedzy wymagają dodatkowego doczytania.
+    
+- Kryteria akceptacji:
+    
+
+1. Dashboard wyświetla ogólny procent poprawnych odpowiedzi (na podstawie modelu samooceny).
+    
+2. System prezentuje wykres lub listę skuteczności z podziałem na zdefiniowane kategorie tematyczne.
+    
+3. Użytkownik widzi listę ostatnich 10 sesji treningowych z ich wynikami.
+    
+
+### US-007: Obsługa skrajnych przypadków (Przerwanie gry)
+
+- ID: US-007
+    
+- Tytuł: Reakcja na odświeżenie strony
+    
+- Opis: Jako twórca systemu chcę, aby odświeżenie strony unieważniało trwającą rundę, co zapobiega oszukiwaniu poprzez resetowanie timera.
+    
+- Kryteria akceptacji:
+    
+
+1. W trakcie aktywnej rundy nie jest zapisywany stan tymczasowy w LocalStorage/DB.
+    
+2. Odświeżenie strony skutkuje powrotem do ekranu głównego (Dashboardu).
+    
+3. Wyniki z niedokończonej rundy nie są wliczane do statystyk ogólnych.
     
 
 ## 6. Metryki sukcesu
 
-- Jakość generowania: 80% pytań AI oznaczonych przez użytkowników jako Akceptuj.
+- AI Quality: Minimum 80% pytań generowanych przez AI musi zawierać co najmniej dwa parametry identyfikujące (np. nazwisko i rok), co potwierdza poziom Ekspert.
     
-- Wykorzystanie AI: 60% sesji treningowych realizowanych na pytaniach wygenerowanych przez model RAG.
+- Performance: Czas od kliknięcia "Generuj" do wyświetlenia pierwszego pytania nie przekracza 40 sekund.
     
-- Skuteczność walidacji: Spadek liczby manualnych zgłoszeń błędów o 40% dzięki zastosowaniu dwustopniowego VAR (Levenshtein + LLM).
+- Stability: Wskaźnik błędów parsowania JSON z AI poniżej 5% przy zastosowaniu mechanizmu Retry.
     
-- Wydajność: Średni czas odpowiedzi bramki VAR (LLM) poniżej 2 sekund.
+- Engagement: Średnia liczba ukończonych pełnych quizów (40 pytań) przez aktywnego użytkownika wynosi minimum 3 tygodniowo.
+    
+- Data Integrity: Brak wycieków danych między użytkownikami dzięki poprawnej konfiguracji RLS w Supabase (0 zgłoszeń naruszenia prywatności).

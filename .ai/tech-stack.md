@@ -1,35 +1,31 @@
-Frontend - Astro 5 z Vue 3 (Island Architecture):
+Frontend – Astro + Vue (Szybkość i Interaktywność)
+Astro 5: Służy jako szkielet (meta-framework). Wykorzystamy go do statycznego renderowania większości stron, co zapewni błyskawiczne ładowanie.
 
-Astro 5: Służy jako szkielet aplikacji, zapewniając szybkie ładowanie (SEO) i routing.
+Vue 3.5+ (Composition API): Nasza „interaktywna broń”. Użyjemy go do budowy Silnika Gry (timer, scratchpad) oraz formularzy w panelu CRUD.
 
-Vue 3 (Composition API): Obsługuje interaktywne części quizu (licznik czasu, reaktywne formularze, system VAR).
+TypeScript 5: Ścisłe typowanie dla modeli danych (np. interfejs Question), co wyeliminuje błędy typu undefined w trakcie quizu.
 
-Shadcn-Vue + Radix Vue: Zapewnia zestaw dostępnych i stylowalnych komponentów UI dostosowanych do Vue.
+Tailwind CSS 4: Nowoczesne podejście do stylowania. Wykorzystamy nowe możliwości silnika do budowy responsywnego UI.
 
-Nano Stores: Lekki menedżer stanu do komunikacji między niezależnymi wyspami Vue na stronie.
+Shadcn-vue: Biblioteka komponentów (oparta na Radix Vue), która zapewni profesjonalny wygląd bez pisania wszystkiego od zera.
 
-Tailwind 4: Silnik CSS do szybkiego i nowoczesnego stylowania.
+Backend – Supabase (Kompleksowy Backend-as-a-Service)
+PostgreSQL: Relacyjna baza danych, która idealnie obsłuży strukturę Quiz -> Rundy -> Pytania.
 
-Backend & RAG - Supabase (PostgreSQL + pgvector):
+Supabase Auth: Gotowy moduł rejestracji i logowania (email/hasło)
 
-PostgreSQL: Przechowywanie danych użytkowników, wyników i ustrukturyzowanych pytań.
+Supabase Storage: Przechowywanie zdjęć do pytań (bucket „quiz-images”) z optymalizacją dostarczania plików.
 
-pgvector: Rozszerzenie bazy danych umożliwiające przechowywanie tzw. embeddings (wektorów) dla systemu RAG.
+Row Level Security (RLS): Zapewnienie, że tylko Ty masz dostęp do swoich pytań i wyników.
 
-Supabase Edge Functions: Bezserwerowe funkcje w TypeScript do obsługi logiki AI i weryfikacji VAR.
+AI – OpenRouter.ai (Agregator Modeli)
+Model Flexibility: Dostęp do GPT-4o, Claude 3.5 Sonnet czy Llama 3 przez jedno API. Pozwoli nam to na testowanie, który model najlepiej radzi sobie z „piłkarskim ekspertem”.
 
-Supabase Storage: Przechowywanie obrazów dodawanych manualnie do pytań.
+Cost Management: Ustawienie twardych limitów na klucze API, aby uniknąć niespodzianek na karcie kredytowej.
 
-AI - Komunikacja i Embeddings (OpenRouter.ai):
+CI/CD i Hosting
+GitHub Actions: Automatyczne testy i budowanie obrazu Docker po każdym „pushu” do gałęzi głównej.
 
-OpenRouter.ai: Dostęp do modeli generatywnych (np. GPT-4o-mini lub Claude Haiku) dla silnika quizu i systemu VAR.
+Docker: Konteneryzacja aplikacji, co gwarantuje, że „u mnie działa” przełoży się na „na serwerze też działa”.
 
-Text-Embedding Models: Użycie modelu (np. od OpenAI przez OpenRouter lub HuggingFace) do zamiany Twojego JSON-a na wektory przeszukiwalne przez RAG.
-
-CI/CD i Hosting:
-
-GitHub Actions: Automatyzacja testów i budowania obrazów Docker.
-
-DigitalOcean App Platform: Hosting zoptymalizowanego obrazu Docker (zawierającego tylko środowisko Node.js).
-
-Admin Workflow: Lokalny skrypt/narzędzie do konwersji PPTX -> JSON przed wysłaniem do bazy.
+DigitalOcean: Hosting na sprawdzonym VPS (Droplet), co daje nam pełną kontrolę nad środowiskiem.
