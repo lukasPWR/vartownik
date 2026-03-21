@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
 
-import { listQuestions } from "@/lib/services/questions.service";
+import { ConflictError, StorageLimitError } from "@/lib/errors";
+import { createQuestion, listQuestions } from "@/lib/services/questions.service";
 
 export const prerender = false;
 
@@ -22,6 +23,80 @@ const ListQuestionsSchema = z.object({
 });
 
 export type ListQuestionsQuery = z.infer<typeof ListQuestionsSchema>;
+
+// ---------------------------------------------------------------------------
+// POST /api/questions — create a manual question
+// ---------------------------------------------------------------------------
+
+const CorrectAnswerSchema = z.object({
+  primary: z.string().min(1).max(200),
+  synonyms: z.array(z.string().max(200)).max(10).default([]),
+});
+
+const CreateQuestionBodySchema = z.object({
+  question_text: z.string().min(10).max(1000),
+  correct_answer: CorrectAnswerSchema,
+  difficulty_score: z.number().int().min(1).max(5),
+  category_ids: z.array(z.string().uuid()).min(1),
+  tag_ids: z.array(z.string().uuid()).default([]),
+  image_path: z.string().nullable().optional(),
+});
+
+export const POST: APIRoute = async ({ locals, request }) => {
+  if (!locals.user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Request body must be valid JSON" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const parsed = CreateQuestionBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({
+        error: "Validation failed",
+        issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const result = await createQuestion(locals.supabase, locals.user.id, parsed.data);
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    if (err instanceof StorageLimitError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (err instanceof ConflictError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    console.error("[POST /api/questions] Unexpected error", { userId: locals.user.id, err });
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+};
 
 // ---------------------------------------------------------------------------
 // Route handler
