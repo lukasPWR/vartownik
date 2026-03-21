@@ -21,6 +21,8 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret" }),
       SUPABASE_KEY: envField.string({ context: "server", access: "secret" }),
+      OPENROUTER_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      GOOGLE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });
