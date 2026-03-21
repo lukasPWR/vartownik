@@ -120,7 +120,8 @@ export async function createQuestion(
     supabase.from("questions").select("id", { count: "exact", head: true }).eq("user_id", userId),
   ]);
 
-  if ((count ?? 0) >= (prefs?.storage_limit_questions ?? 0)) {
+  const storageLimit = prefs?.storage_limit_questions;
+  if (storageLimit != null && (count ?? 0) >= storageLimit) {
     throw new StorageLimitError("Question storage limit reached.");
   }
 

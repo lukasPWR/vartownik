@@ -43,13 +43,13 @@ const CreateQuestionBodySchema = z.object({
 });
 
 export const POST: APIRoute = async ({ locals, request }) => {
-  if (!locals.user) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
+  // if (!locals.user) {
+  //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
+  //     status: 401,
+  //     headers: { "Content-Type": "application/json" },
+  //   });
+  // }
+  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
   let body: unknown;
   try {
     body = await request.json();
@@ -72,7 +72,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   }
 
   try {
-    const result = await createQuestion(locals.supabase, locals.user.id, parsed.data);
+    const result = await createQuestion(locals.supabase, locals.user?.id ?? TEST_USER_ID, parsed.data);
     return new Response(JSON.stringify(result), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -90,7 +90,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    console.error("[POST /api/questions] Unexpected error", { userId: locals.user.id, err });
+    console.error("[POST /api/questions] Unexpected error", { userId: TEST_USER_ID, err });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

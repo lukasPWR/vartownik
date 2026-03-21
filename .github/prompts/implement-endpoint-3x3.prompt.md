@@ -11,7 +11,7 @@ Najpierw dokładnie przejrzyj dostarczony plan wdrożenia:
 </types>
 
 <implementation_rules>
-#file:tech-stack.md 
+#file:tech-stack.md
 </implementation_rules>
 
 <implementation_approach>
@@ -21,7 +21,6 @@ Realizuj maksymalnie 3 kroki planu implementacji, podsumuj krótko co zrobiłeś
 Teraz wykonaj następujące kroki, aby zaimplementować punkt końcowy interfejsu API REST:
 
 1. Przeanalizuj plan wdrożenia:
-
    - Określ metodę HTTP (GET, POST, PUT, DELETE itp.) dla punktu końcowego.
    - Określenie struktury adresu URL punktu końcowego
    - Lista wszystkich oczekiwanych parametrów wejściowych
@@ -29,7 +28,6 @@ Teraz wykonaj następujące kroki, aby zaimplementować punkt końcowy interfejs
    - Zwróć uwagę na wszelkie szczególne wymagania dotyczące walidacji lub obsługi błędów.
 
 2. Rozpocznij implementację:
-
    - Rozpocznij od zdefiniowania funkcji punktu końcowego z prawidłowym dekoratorem metody HTTP.
    - Skonfiguruj parametry funkcji w oparciu o oczekiwane dane wejściowe
    - Wdrożenie walidacji danych wejściowych dla wszystkich parametrów
@@ -39,14 +37,12 @@ Teraz wykonaj następujące kroki, aby zaimplementować punkt końcowy interfejs
    - Przygotowanie struktury danych odpowiedzi
 
 3. Walidacja i obsługa błędów:
-
    - Wdrożenie dokładnej walidacji danych wejściowych dla wszystkich parametrów
    - Używanie odpowiednich kodów statusu HTTP dla różnych scenariuszy (np. 400 dla błędnych żądań, 404 dla nie znaleziono, 500 dla błędów serwera).
    - Dostarczanie jasnych i informacyjnych komunikatów o błędach w odpowiedzi.
    - Obsługa potencjalnych wyjątków, które mogą wystąpić podczas przetwarzania.
 
 4. Rozważania dotyczące testowania:
-
    - Należy rozważyć edge case'y i potencjalne problemy, które powinny zostać przetestowane.
    - Upewnienie się, że wdrożenie obejmuje wszystkie scenariusze wymienione w planie.
 
