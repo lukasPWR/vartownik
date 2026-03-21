@@ -15,13 +15,13 @@ interface GeminiContent {
 }
 
 interface GeminiResponse {
-  candidates: Array<{
+  candidates: {
     content: {
       parts: GeminiPart[];
       role: string;
     };
     finishReason: string;
-  }>;
+  }[];
   usageMetadata?: {
     promptTokenCount: number;
     candidatesTokenCount: number;
