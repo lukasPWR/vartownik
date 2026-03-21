@@ -24,3 +24,19 @@ export class AiParseError extends Error {
     this.name = "AiParseError";
   }
 }
+
+/** User has reached their question storage limit. */
+export class StorageLimitError extends Error {
+  constructor(message = "Question storage limit reached.") {
+    super(message);
+    this.name = "StorageLimitError";
+  }
+}
+
+/** A resource with the same unique key already exists. */
+export class ConflictError extends Error {
+  constructor(message = "A resource with this identifier already exists.") {
+    super(message);
+    this.name = "ConflictError";
+  }
+}
