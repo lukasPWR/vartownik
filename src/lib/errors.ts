@@ -40,3 +40,11 @@ export class ConflictError extends Error {
     this.name = "ConflictError";
   }
 }
+
+/** The requested resource does not exist or is not accessible by the current user. */
+export class NotFoundError extends Error {
+  constructor(message = "Resource not found.") {
+    super(message);
+    this.name = "NotFoundError";
+  }
+}
