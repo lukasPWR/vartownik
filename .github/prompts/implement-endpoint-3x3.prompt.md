@@ -3,7 +3,7 @@ Twoim zadaniem jest wdrożenie endpointa interfejsu API REST w oparciu o podany 
 Najpierw dokładnie przejrzyj dostarczony plan wdrożenia:
 
 <implementation_plan>
-{{endpoint-implementation-plan}} <- dodaj referencję do planu implementacji endpointa (np. @generations-endpoint-implementation-plan.md)
+{{PLAN}}
 </implementation_plan>
 
 <types>
