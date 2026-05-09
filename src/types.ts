@@ -408,3 +408,38 @@ export interface CategoryStatsDTO {
 export interface CategoryStatsResponseDTO {
   data: CategoryStatsDTO[];
 }
+
+/** Alias used by dashboard components — same shape as CategoryStatsDTO. */
+export type CategoryStatsItemDTO = CategoryStatsDTO;
+
+// ---------------------------------------------------------------------------
+// 10. Dashboard — Sessions list & Pending reviews
+// ---------------------------------------------------------------------------
+
+/**
+ * Session item for the dashboard recent-sessions table.
+ * Differs from SessionDTO: score_summary is nullable (in_progress / abandoned may lack it).
+ */
+export interface SessionListItemDTO {
+  id: string;
+  status: SessionStatus;
+  timer_seconds: number;
+  total_rounds: number;
+  questions_per_round: number;
+  started_at: string;
+  completed_at: string | null;
+  score_summary: ScoreSummaryDTO | null;
+}
+
+/** GET /api/sessions response envelope used by the dashboard. */
+export interface SessionsResponseDTO {
+  data: SessionListItemDTO[];
+  pagination: PaginationDTO;
+}
+
+/** Slim DTO for a flagged question shown in the dashboard PendingReviews widget. */
+export interface PendingQuestionDTO {
+  id: string;
+  question_text: string;
+  created_at: string;
+}

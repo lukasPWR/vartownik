@@ -1,0 +1,62 @@
+---
+import { TrendingUp, Trophy, Flag } from "lucide-vue-next";
+
+import type { StatsOverviewDTO } from "@/types";
+import StatCard from "./StatCard.astro";
+
+interface Props {
+  overview: StatsOverviewDTO | null;
+}
+
+const { overview } = Astro.props;
+
+const accuracyValue = overview ? `${overview.overall_accuracy_percent.toFixed(1)}%` : "—";
+
+const accuracyAccent =
+  overview && overview.overall_accuracy_percent >= 70
+    ? "text-green-400"
+    : overview && overview.overall_accuracy_percent >= 40
+      ? "text-yellow-400"
+      : "text-red-400";
+---
+
+<section aria-labelledby="stats-overview-heading">
+  <h2 id="stats-overview-heading" class="mb-4 text-lg font-semibold text-white/80">Twoje statystyki</h2>
+
+  {
+    overview === null ? (
+      <div
+        role="alert"
+        class="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+      >
+        <span aria-hidden="true">⚠</span>
+        Nie udało się załadować statystyk.{" "}
+        <button
+          type="button"
+          onclick="window.location.reload()"
+          class="ml-auto underline hover:no-underline focus-visible:outline-none"
+        >
+          Odśwież stronę
+        </button>
+      </div>
+    ) : (
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <StatCard value={accuracyValue} label="Ogólna skuteczność" accent={accuracyAccent}>
+          <TrendingUp slot="icon" class="size-5" />
+        </StatCard>
+
+        <StatCard value={String(overview.total_sessions_completed)} label="Ukończone sesje" accent="text-blue-300">
+          <Trophy slot="icon" class="size-5" />
+        </StatCard>
+
+        <StatCard
+          value={String(overview.flagged_questions_pending)}
+          label="Do przejrzenia"
+          accent={overview.flagged_questions_pending > 0 ? "text-yellow-400" : "text-white/60"}
+        >
+          <Flag slot="icon" class="size-5" />
+        </StatCard>
+      </div>
+    )
+  }
+</section>

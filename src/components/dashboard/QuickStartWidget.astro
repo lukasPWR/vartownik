@@ -1,0 +1,30 @@
+---
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+---
+
+<div class="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm">
+  <div class="mb-4 flex items-center gap-3">
+    <span
+      class="flex size-10 items-center justify-center rounded-lg bg-purple-500/20 text-purple-300"
+      aria-hidden="true"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+    </span>
+    <h2 class="text-lg font-semibold text-white">Gotowy na trening?</h2>
+  </div>
+  <p class="mb-5 text-sm text-white/60">Wygeneruj nowy quiz i sprawdź swoją wiedzę o piłce nożnej.</p>
+  <a href="/quiz/new" class={cn(buttonVariants({ variant: "default" }), "w-full sm:w-auto")}> Generuj Quiz </a>
+</div>

@@ -1,0 +1,68 @@
+---
+import type { PendingQuestionDTO } from "@/types";
+
+interface Props {
+  flaggedQuestions: PendingQuestionDTO[];
+  totalFlagged: number;
+}
+
+const { flaggedQuestions, totalFlagged } = Astro.props;
+
+const MAX_SHOWN = 5;
+const displayed = flaggedQuestions.slice(0, MAX_SHOWN);
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+---
+
+<section
+  aria-labelledby="pending-reviews-heading"
+  class="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
+>
+  <div class="mb-4 flex items-center justify-between gap-2">
+    <h2 id="pending-reviews-heading" class="text-lg font-semibold text-white">Do przejrzenia</h2>
+    {
+      totalFlagged > 0 && (
+        <span
+          class="inline-flex items-center rounded-full bg-yellow-500/20 px-2.5 py-0.5 text-xs font-medium text-yellow-300"
+          aria-label={`${totalFlagged} pytań oczekuje na przegląd`}
+        >
+          {totalFlagged}
+        </span>
+      )
+    }
+  </div>
+
+  {
+    flaggedQuestions.length === 0 ? (
+      <p class="text-sm text-green-400">Brak pytań do przejrzenia ✓</p>
+    ) : (
+      <>
+        <ul class="mb-4 space-y-2" role="list">
+          {displayed.map((q) => (
+            <li class="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm">
+              <span class="truncate text-white/80" title={q.question_text}>
+                {truncate(q.question_text, 80)}
+              </span>
+              <a
+                href={`/questions/${q.id}/edit`}
+                class="shrink-0 text-xs text-purple-300 underline hover:text-purple-100 hover:no-underline focus-visible:outline-none"
+              >
+                Edytuj
+              </a>
+            </li>
+          ))}
+        </ul>
+        {totalFlagged > 0 && (
+          <a
+            href="/questions?status=flagged"
+            class="text-xs text-purple-300 hover:text-purple-100 hover:underline focus-visible:outline-none"
+          >
+            Zobacz wszystkie →
+          </a>
+        )}
+      </>
+    )
+  }
+</section>
