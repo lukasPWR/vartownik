@@ -178,6 +178,8 @@ async function callAiWithRetry(
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/i, "");
 
+      console.log(`[generation-batch] Raw AI response (first 500 chars):`, content.substring(0, 500));
+
       const parsed: unknown = JSON.parse(cleaned);
       const validated = AiResponseSchema.parse(parsed);
 

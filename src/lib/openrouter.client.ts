@@ -59,7 +59,16 @@ export async function callOpenRouter(
   }
 
   if (!response.ok) {
-    throw new OpenRouterError(`OpenRouter returned HTTP ${response.status}: ${response.statusText}`, response.status);
+    let errorBody = "";
+    try {
+      errorBody = await response.text();
+    } catch {
+      // ignore
+    }
+    throw new OpenRouterError(
+      `OpenRouter returned HTTP ${response.status}: ${response.statusText}${errorBody ? ` — ${errorBody}` : ""}`,
+      response.status
+    );
   }
 
   let data: OpenRouterResponse;

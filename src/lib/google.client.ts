@@ -78,8 +78,14 @@ export async function callGoogle(
   }
 
   if (!response.ok) {
+    let errorBody = "";
+    try {
+      errorBody = await response.text();
+    } catch {
+      // ignore
+    }
     throw new OpenRouterError(
-      `Google Gemini returned HTTP ${response.status}: ${response.statusText}`,
+      `Google Gemini returned HTTP ${response.status}: ${response.statusText}${errorBody ? ` — ${errorBody}` : ""}`,
       response.status
     );
   }
@@ -105,6 +111,8 @@ function estimateGeminiCost(modelId: string, totalTokens: number): number {
   // Approximate blended cost per 1M tokens in USD
   const COST_PER_MILLION: Record<string, number> = {
     "gemini-2.5-pro": 3.5,
+    "gemini-2.5-flash": 0.3,
+    "gemini-2.5-flash-lite": 0.1,
     "gemini-2.0-flash": 0.15,
     "gemini-2.0-flash-lite": 0.075,
     "gemini-1.5-pro": 1.75,
