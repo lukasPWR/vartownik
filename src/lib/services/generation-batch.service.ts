@@ -5,8 +5,15 @@ import type { SupabaseClientType } from "@/db/supabase.client";
 import { callOpenRouter } from "@/lib/openrouter.client";
 import { callGoogle } from "@/lib/google.client";
 import { buildPrompt } from "@/lib/prompts/quiz-generation.v1";
-import { AiParseError, OpenRouterError, RateLimitError } from "@/lib/errors";
-import type { CreateGenerationBatchCommand, GenerationBatchSuccessDTO, RoundQuestionGroupDTO } from "@/types";
+import { AiParseError, NotFoundError, OpenRouterError, RateLimitError } from "@/lib/errors";
+import type {
+  CreateGenerationBatchCommand,
+  GenerationBatchDTO,
+  GenerationBatchStatusDTO,
+  GenerationBatchSuccessDTO,
+  ListGenerationBatchesResponseDTO,
+  RoundQuestionGroupDTO,
+} from "@/types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -405,5 +412,96 @@ export async function createGenerationBatch(
     estimated_cost_usd: estimatedCostUsd,
     finished_at: finishedAt,
     rounds,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Get batch by ID (status poll)
+// ---------------------------------------------------------------------------
+
+/**
+ * Retrieves the status fields of a single generation batch owned by `userId`.
+ * Throws `NotFoundError` when the batch does not exist or belongs to another user.
+ */
+export async function getGenerationBatchById(
+  supabase: SupabaseClientType,
+  id: string,
+  userId: string
+): Promise<GenerationBatchStatusDTO> {
+  const { data, error } = await supabase
+    .from("generation_batches")
+    .select("id, status, returned_questions_count, retry_count, estimated_cost_usd, error_message, finished_at")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    // PGRST116 = no rows returned by .single()
+    if (error.code === "PGRST116") {
+      throw new NotFoundError("Generation batch not found");
+    }
+    console.error("[generation-batch] getGenerationBatchById failed", { id, userId, error });
+    throw error;
+  }
+
+  if (!data) {
+    throw new NotFoundError("Generation batch not found");
+  }
+
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// List generation batches (paginated)
+// ---------------------------------------------------------------------------
+
+/** Zod schema for query params of GET /api/generation-batches. */
+export const ListGenerationBatchesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(["pending", "success", "failed"]).optional(),
+});
+
+export type ListGenerationBatchesQuery = z.infer<typeof ListGenerationBatchesQuerySchema>;
+
+/**
+ * Returns a paginated list of generation batches owned by `userId`.
+ * Applies optional `status` filter and orders by `created_at DESC`.
+ */
+export async function listGenerationBatches(
+  supabase: SupabaseClientType,
+  query: ListGenerationBatchesQuery,
+  userId: string
+): Promise<ListGenerationBatchesResponseDTO> {
+  const offset = (query.page - 1) * query.limit;
+
+  let dbQuery = supabase
+    .from("generation_batches")
+    .select(
+      "id, status, model, provider, prompt_version, requested_questions_count, returned_questions_count, retry_count, estimated_cost_usd, error_message, finished_at, created_at",
+      { count: "exact" }
+    )
+    .eq("user_id", userId);
+
+  if (query.status !== undefined) {
+    dbQuery = dbQuery.eq("status", query.status);
+  }
+
+  const { data, error, count } = await dbQuery
+    .order("created_at", { ascending: false })
+    .range(offset, offset + query.limit - 1);
+
+  if (error) {
+    console.error("[generation-batch] listGenerationBatches failed", { userId, query, error });
+    throw new Error("Failed to list generation batches");
+  }
+
+  return {
+    data: (data ?? []) as GenerationBatchDTO[],
+    pagination: {
+      page: query.page,
+      limit: query.limit,
+      total: count ?? 0,
+    },
   };
 }

@@ -204,6 +204,21 @@ export interface ListGenerationBatchesResponseDTO {
   pagination: PaginationDTO;
 }
 
+/** GET /api/generation-batches response envelope. */
+export interface ListGenerationBatchesResponseDTO {
+  data: GenerationBatchDTO[];
+  pagination: PaginationDTO;
+}
+
+/**
+ * Response for GET /api/generation-batches/:id — status-only poll payload.
+ * Subset of GenerationBatchDTO exposing only the fields relevant to polling.
+ */
+export type GenerationBatchStatusDTO = Pick<
+  Tables<"generation_batches">,
+  "id" | "status" | "returned_questions_count" | "retry_count" | "estimated_cost_usd" | "error_message" | "finished_at"
+>;
+
 // ---------------------------------------------------------------------------
 // 5. Sessions
 // ---------------------------------------------------------------------------
