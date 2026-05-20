@@ -1,3 +1,4 @@
+```
 ---
 name: 10x-tech-stack-selector
 description: >
@@ -11,6 +12,7 @@ description: >
   framework", "co wybrać do projektu", or has a PRD on disk and is ready to
   scaffold. Use AFTER /10x-prd, BEFORE /10x-bootstrapper.
 ---
+```
 
 # Tech Stack Selector: From PRD to Starter
 
@@ -34,7 +36,7 @@ The starter registry in `references/starter-registry.yaml` is the **single sourc
 
 ## Required inputs
 
-1. A PRD file — exists, is readable, conforms to the PRD schema (`packages/ai-artifacts/skills/10x-shape/references/prd-schema.md`). Default location: `context/foundation/prd.md`. The user MAY pass a different path as the argument (see "Initial Response" below). The skill reads the **frontmatter** as priors (`product_type`, `target_scale`, `timeline_budget`, `project`) and may read body sections (`## Functional Requirements`, `## Non-Goals`) for the feature audit and to detect Socratic moments where the PRD's FRs surface a feature the recommended starter does not include.
+1. A PRD file — exists, is readable, conforms to the PRD schema (`/skills/10x-shape/references/prd-schema.md`). Default location: `context/foundation/prd.md`. The user MAY pass a different path as the argument (see "Initial Response" below). The skill reads the **frontmatter** as priors (`product_type`, `target_scale`, `timeline_budget`, `project`) and may read body sections (`## Functional Requirements`, `## Non-Goals`) for the feature audit and to detect Socratic moments where the PRD's FRs surface a feature the recommended starter does not include.
 2. `references/starter-registry.yaml` — bundled with the skill. Loaded at decision time.
 3. `references/residual-interview.md` — bundled. Loaded at interview time.
 4. `references/handoff-schema.md` — bundled. Loaded at write time.
@@ -109,11 +111,17 @@ PRD priors:
 
 Ask one confirmation:
 
-Ask the user: "Are these priors correct, or do you want to correct anything before we proceed?"
-Options:
-- "Correct — proceed (Recommended)" (Continue with these priors.)
-- "Correct a value" (I'll ask which field to correct, then update an in-memory override (the PRD on disk is unchanged).)
-- "Stop — fix the PRD first" (Exit. Re-run /10x-prd to fix priors, then re-invoke /10x-tech-stack-selector.)
+Ask the user:
+- question: "Are these priors correct, or do you want to correct anything before we proceed?"
+  header: "Priors"
+  options:
+  - label: "Correct — proceed (Recommended)"
+    description: "Continue with these priors."
+  - label: "Correct a value"
+    description: "I'll ask which field to correct, then update an in-memory override (the PRD on disk is unchanged)."
+  - label: "Stop — fix the PRD first"
+    description: "Exit. Re-run /10x-prd to fix priors, then re-invoke /10x-tech-stack-selector."
+  multiSelect: false
 
 If "Correct a value": ask which field, capture an override, proceed with the override applied for this session only.
 
@@ -179,11 +187,17 @@ If the file does not exist, write `context/foundation/tech-stack.md` with the va
 
 If the file exists, ask:
 
-Ask the user: "context/foundation/tech-stack.md already exists. How would you like to proceed?"
-Options:
-- "Overwrite (Recommended)" (Replace the existing tech-stack.md with the new selection. The prior version is lost unless committed.)
-- "Save as tech-stack-v2.md" (Preserve history. New selection lands at the next available tech-stack-vN.md slot.)
-- "Abort" (Exit without writing. The conversation rationale is preserved in chat only.)
+Ask the user:
+- question: "context/foundation/tech-stack.md already exists. How would you like to proceed?"
+  header: "Collision"
+  options:
+  - label: "Overwrite (Recommended)"
+    description: "Replace the existing tech-stack.md with the new selection. The prior version is lost unless committed."
+  - label: "Save as tech-stack-v2.md"
+    description: "Preserve history. New selection lands at the next available tech-stack-vN.md slot."
+  - label: "Abort"
+    description: "Exit without writing. The conversation rationale is preserved in chat only."
+  multiSelect: false
 
 The recommended default here is "Overwrite" because tech-stack-selector is a one-shot decision per project; multiple versions are usually a sign the user is reconsidering, in which case losing the prior pick is intentional. Versioned save is the escape hatch.
 
