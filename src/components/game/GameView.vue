@@ -7,7 +7,6 @@ import type {
   SessionCreatedDTO,
   RoundSummaryDTO,
   RoundDTO,
-  CategoryRefDTO,
 } from "@/types";
 
 import GenerationLoadingScreen from "./GenerationLoadingScreen.vue";
@@ -20,16 +19,6 @@ import QuizFocusMode from "./QuizFocusMode.vue";
 type GameState = "loading" | "playing";
 type GenerationPhase = "initiating" | "generating" | "verifying" | "preparing" | "finalizing";
 type GenerationErrorType = "unprocessable" | "rate_limit" | "upstream" | "unknown";
-
-interface ActiveQuestionViewModel {
-  position: number;
-  questionId: string;
-  questionText: string;
-  difficultyScore: number;
-  categories: Pick<CategoryRefDTO, "name">[];
-  imagePath: string | null;
-  startedAtMs: number;
-}
 
 // ---------------------------------------------------------------------------
 // State — game state machine
@@ -59,21 +48,6 @@ const currentRoundPosition = ref<number>(1);
 const currentRoundId = ref<string | null>(null);
 const roundData = ref<RoundDTO | null>(null);
 const currentQuestionIndex = ref<number>(0);
-
-const activeQuestion = computed<ActiveQuestionViewModel | null>(() => {
-  if (!roundData.value) return null;
-  const q = roundData.value.questions[currentQuestionIndex.value];
-  if (!q) return null;
-  return {
-    position: q.position,
-    questionId: q.question_id,
-    questionText: q.question_text,
-    difficultyScore: q.difficulty_score,
-    categories: q.categories,
-    imagePath: null,
-    startedAtMs: Date.now(),
-  };
-});
 
 const scratchpadText = ref<string>("");
 const isTimerExpired = ref<boolean>(false);

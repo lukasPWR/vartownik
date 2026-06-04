@@ -17,7 +17,7 @@ export const prerender = false;
 
 const CreateGenerationBatchSchema = z.object({
   model: z.string().min(1).max(100),
-  provider: z.enum(["openrouter", "google"]),
+  provider: z.literal("google"),
   prompt_version: z.string().regex(/^v\d+$/, "prompt_version must match pattern v<number> (e.g. v1)"),
   requested_questions_count: z.number().int().positive().max(200).default(40),
 });

@@ -14,7 +14,7 @@ import type {
   GeneratedType,
   QuestionStatus,
 } from "@/types";
-import type { Tables } from "@/db/database.types";
+import type { Tables, TablesUpdate } from "@/db/database.types";
 import type { ListQuestionsQuery } from "@/pages/api/questions/index";
 
 const SORT_MAP: Record<string, { column: string; ascending: boolean }> = {
@@ -326,7 +326,7 @@ export async function updateQuestion(
   const currentQuestion = await getQuestionById(supabase, userId, id);
 
   // Build the direct-column update payload
-  const updatePayload: Record<string, unknown> = {};
+  const updatePayload: TablesUpdate<"questions"> = {};
   if (question_text !== undefined) updatePayload.question_text = question_text;
   if (correct_answer !== undefined) {
     // Merge partial correct_answer with existing value

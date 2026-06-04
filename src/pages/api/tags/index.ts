@@ -26,8 +26,6 @@ export const GET: APIRoute = async ({ locals }) => {
   //     });
   //   }
 
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
-
   try {
     const result = await listTags(locals.supabase);
     return new Response(JSON.stringify(result), {

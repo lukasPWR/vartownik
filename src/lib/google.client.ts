@@ -1,6 +1,6 @@
 import { GOOGLE_API_KEY } from "astro:env/server";
 import { OpenRouterError } from "@/lib/errors";
-import type { OpenRouterMessage } from "@/lib/openrouter.client";
+import type { AiMessage } from "@/lib/prompts/quiz-generation.v1";
 
 const GOOGLE_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const REQUEST_TIMEOUT_MS = 60_000;
@@ -31,13 +31,13 @@ interface GeminiResponse {
 
 /**
  * Calls the Google Gemini generateContent API.
- * Accepts the same `OpenRouterMessage[]` format as callOpenRouter for interoperability.
+ * Accepts provider-neutral chat messages and maps them to Gemini's API shape.
  * Maps `system` role messages to Gemini's `systemInstruction` field.
  * Throws `OpenRouterError` on non-2xx responses or network failures.
  */
 export async function callGoogle(
   model: string,
-  messages: OpenRouterMessage[]
+  messages: AiMessage[]
 ): Promise<{ content: string; estimatedCostUsd: number | null }> {
   // Gemini separates system instruction from conversation turns
   const systemMessage = messages.find((m) => m.role === "system");

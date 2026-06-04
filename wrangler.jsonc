@@ -1,0 +1,50 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "vartownik",
+	"main": "./dist/_worker.js/index.js",
+	"compatibility_date": "2026-06-04",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"workers_dev": true,
+	"preview_urls": true,
+	"assets": {
+		"binding": "ASSETS",
+		"directory": "./dist",
+	},
+	"secrets": {
+		"required": [
+			"SUPABASE_URL",
+			"SUPABASE_KEY",
+			"GOOGLE_API_KEY"
+		],
+	},
+	"observability": {
+		"enabled": true,
+	},
+	"env": {
+		"staging": {
+			"name": "vartownik-staging",
+			"secrets": {
+				"required": [
+					"SUPABASE_URL",
+					"SUPABASE_KEY",
+					"GOOGLE_API_KEY"
+				],
+			},
+			"kv_namespaces": [
+				{
+					"binding": "SESSION",
+					"id": "8e354f7c64c04efc89db24469531d364"
+				}
+			],
+		},
+	},
+	"kv_namespaces": [
+		{
+			"binding": "SESSION",
+			"id": "1f5597e7d02346408173545d756c4d37",
+			"preview_id": "1d75bc0ba6604268b67b1601e2cee13c"
+		}
+	],
+}
