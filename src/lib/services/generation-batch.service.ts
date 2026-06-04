@@ -1,8 +1,7 @@
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import type { SupabaseClientType } from "@/db/supabase.client";
-import { callOpenRouter } from "@/lib/openrouter.client";
 import { callGoogle } from "@/lib/google.client";
 import { buildPrompt } from "@/lib/prompts/quiz-generation.v1";
 import { AiParseError, NotFoundError, OpenRouterError, RateLimitError } from "@/lib/errors";
@@ -148,7 +147,7 @@ async function finalizeBatch(
 }
 
 // ---------------------------------------------------------------------------
-// OpenRouter call with retry
+// Google AI call with retry
 // ---------------------------------------------------------------------------
 
 /**
@@ -157,7 +156,6 @@ async function finalizeBatch(
  * Throws `AiParseError` after exhausting all attempts.
  */
 async function callAiWithRetry(
-  provider: string,
   model: string,
   promptVersion: string,
   count: number
@@ -176,8 +174,7 @@ async function callAiWithRetry(
     }
 
     try {
-      const { content, estimatedCostUsd } =
-        provider === "google" ? await callGoogle(model, messages) : await callOpenRouter(model, messages);
+      const { content, estimatedCostUsd } = await callGoogle(model, messages);
 
       // Strip optional markdown code fences the model may add despite instructions
       const cleaned = content
@@ -370,7 +367,6 @@ export async function createGenerationBatch(
 
   try {
     ({ questions, estimatedCostUsd, retryCount } = await callAiWithRetry(
-      command.provider,
       command.model,
       command.prompt_version,
       command.requested_questions_count

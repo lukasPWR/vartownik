@@ -27,9 +27,6 @@ export const GET: APIRoute = async ({ locals, request }) => {
   //   });
   // }
 
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
-  const userId = locals.user?.id ?? TEST_USER_ID;
-
   const { searchParams } = new URL(request.url);
   const rawQuery = Object.fromEntries(searchParams.entries());
 

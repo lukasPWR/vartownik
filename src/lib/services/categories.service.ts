@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { TablesUpdate } from "@/db/database.types";
 import type { SupabaseClientType } from "@/db/supabase.client";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { slugify } from "@/lib/utils";
@@ -148,7 +149,7 @@ export async function updateCategory(
   id: string,
   command: UpdateCategoryCommand
 ): Promise<CategoryDTO> {
-  const updatePayload: Record<string, unknown> = {};
+  const updatePayload: TablesUpdate<"categories"> = {};
 
   if (command.name !== undefined) {
     updatePayload.name = command.name;

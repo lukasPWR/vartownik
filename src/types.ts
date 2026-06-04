@@ -182,11 +182,10 @@ export interface RoundQuestionGroupDTO {
  * Response 202 — batch completed inline (status = "success").
  * Extends the base batch fields with the distributed round data.
  */
-export interface GenerationBatchSuccessDTO
-  extends Pick<
-    Tables<"generation_batches">,
-    "id" | "status" | "returned_questions_count" | "retry_count" | "estimated_cost_usd" | "finished_at"
-  > {
+export interface GenerationBatchSuccessDTO extends Pick<
+  Tables<"generation_batches">,
+  "id" | "status" | "returned_questions_count" | "retry_count" | "estimated_cost_usd" | "finished_at"
+> {
   rounds: RoundQuestionGroupDTO[];
 }
 
