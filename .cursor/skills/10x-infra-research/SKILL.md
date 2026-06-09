@@ -1,74 +1,68 @@
 ---
 name: 10x-infra-research
 description: >
-  Research and recommend an MVP deployment platform by combining tech-stack
-  context, a short developer interview, and parallel web research scored against
-  five agent-friendly platform criteria. Cross-checks the top recommendation
-  through three anti-bias lenses (devil's advocate, pre-mortem, unknown unknowns)
-  before writing context/foundation/infrastructure.md with a scored platform
-  comparison, rationale, and risk register. Use when the user needs to pick a
-  hosting / deployment / maintenance platform for an MVP and wants a
-  well-researched, bias-checked decision rather than a gut call.
-  Trigger phrases: "choose a platform", "where should I deploy", "infra research",
-  "deployment platform for my MVP", "wybierz platformę", "gdzie deployować",
-  "infrastructure decision", "hosting choice", "jaka platforma do deploymentu".
-  Use AFTER /10x-prd or /10x-tech-stack-selector, BEFORE /10x-implement.
+  Research and recommend an MVP deployment platform via a short interview plus
+  parallel, bias-checked web research; writes context/foundation/infrastructure.md
+  with a scored comparison and risk register. Trigger phrases: "choose a platform",
+  "where should I deploy", "infra research", "wybierz platformę",
+  "gdzie deployować", "jaka platforma do deploymentu". Use AFTER /10x-prd or
+  /10x-tech-stack-selector, BEFORE /10x-implement.
 ---
 
-# Platform Research: Conscious Deployment Platform for MVP
+# Badanie platformy: Świadoma platforma wdrożeniowa dla MVP
 
-This skill produces a **conscious infrastructure decision** — not a recommendation from vibes, but one grounded in the project's tech stack, the developer's operational constraints, fresh web research, and three anti-bias lenses that stress-test the winning platform before the decision is recorded.
+Ta umiejętność prowadzi do **świadomej decyzji dotyczącej infrastruktury** — nie jest to rekomendacja oparta na przeczuciach, lecz na stosie technologicznym projektu, ograniczeniach operacyjnych dewelopera, świeżych badaniach internetowych oraz trzech soczewkach anty-uprzedzeniowych, które poddają zwycięską platformę testom obciążeniowym przed zarejestrowaniem decyzji.
 
-The single deliverable is `context/foundation/infrastructure.md` — the third decision contract in the foundation chain after `prd.md` (what and for whom) and `tech-stack.md` (what to build with). It captures: a scored platform comparison, the rationale for the recommendation, an operational story (preview / secrets / rollback / approval / logs), and a risk register with pre-populated mitigation notes.
+Jedynym rezultatem jest plik `context/foundation/infrastructure.md` — trzecia umowa decyzyjna w łańcuchu fundamentów po `prd.md` (co i dla kogo) i `tech-stack.md` (z czym budować). Zawiera: porównanie platform z punktacją, uzasadnienie rekomendacji, historię operacyjną (podgląd / sekrety / wycofywanie / zatwierdzanie / logi) oraz rejestr ryzyka z wstępnie wypełnionymi notatkami dotyczącymi łagodzenia.
 
-## When to use, when to skip
+## Kiedy używać, kiedy pominąć
 
-**Use when**: the user needs to pick a deployment/hosting platform for an MVP and wants a structured, researched decision. The skill works best when `context/foundation/tech-stack.md` exists — it uses the stack as a hard constraint when evaluating platforms.
+**Użyj, gdy**: użytkownik musi wybrać platformę wdrożeniową/hostingową dla MVP i chce ustrukturyzowanej, opartej na badaniach decyzji. Umiejętność działa najlepiej, gdy istnieje `context/foundation/tech-stack.md` — używa stosu jako twardego ograniczenia podczas oceny platform.
 
-**Skip when**: the platform is already decided and the user wants help configuring CI/CD or writing Dockerfiles — those are out of scope for this skill (see Non-Goals). Skip also when the user asks about production-scale architecture; this skill focuses on MVP deployments.
+**Pomiń, gdy**: platforma jest już wybrana, a użytkownik chce pomocy w konfiguracji CI/CD lub pisaniu Dockerfile'ów — te kwestie wykraczają poza zakres tej umiejętności (patrz Non-Goals). Pomiń również, gdy użytkownik pyta o architekturę na skalę produkcyjną; ta umiejętność koncentruje się na wdrożeniach MVP.
 
-## Relationship to other skills
+## Związek z innymi umiejętnościami
 
-- `/10x-prd` — upstream. Produces `context/foundation/prd.md` with product context. Optional input.
-- `/10x-tech-stack-selector` — upstream. Produces `context/foundation/tech-stack.md`. The primary hard-constraint input — load it if present.
-- `/10x-stack-assess` — sibling. Assesses the existing stack for agent-friendliness. Infrastructure research is the deployment complement.
-- `/10x-implement` — downstream. Reads `context/foundation/infrastructure.md` to inform deployment steps during implementation.
+- `/10x-prd` — upstream. Tworzy `context/foundation/prd.md` z kontekstem produktu. Opcjonalne wejście.
+- `/10x-tech-stack-selector` — upstream. Tworzy `context/foundation/tech-stack.md`. Główne wejście z twardymi ograniczeniami — ładuje je, jeśli jest obecne.
+- `/10x-stack-assess` — pokrewne. Ocenia istniejący stos pod kątem przyjazności dla agenta. Badanie infrastruktury jest uzupełnieniem wdrożenia.
+- `/10x-implement` — downstream. Odczytuje `context/foundation/infrastructure.md`, aby informować o krokach wdrożenia podczas implementacji.
 
-## Non-goals
+## Cele nieobjęte
 
-This skill does **not**:
-- Build Docker images or write Dockerfiles.
-- Configure CI/CD pipelines.
-- Plan beyond MVP scope (medium-term cost projections are fine; multi-region HA is out of scope).
+Ta umiejętność **nie**:
+- Buduje obrazów Docker ani nie pisze Dockerfile'ów.
+- Konfiguruje potoków CI/CD.
+- Planuje poza zakresem MVP (średnioterminowe prognozy kosztów są w porządku; wieloregionowe HA wykracza poza zakres).
 
-## Required inputs
+## Wymagane dane wejściowe
 
-1. `references/agent-friendly-criteria.md` — bundled. The five platform criteria used as the evaluation lens.
+1. `references/agent-friendly-criteria.md` — dołączone. Pięć kryteriów platformy używanych jako soczewka oceny.
 
-## Optional inputs
+## Opcjonalne dane wejściowe
 
-1. `context/foundation/tech-stack.md` — if present, the skill reads the language, framework, and runtime to filter out platforms that don't support them.
-2. `context/foundation/prd.md` — if present, the skill reads product context (user scale, latency requirements) to weight research.
+1. `context/foundation/tech-stack.md` — jeśli jest obecny, umiejętność odczytuje język, framework i środowisko uruchomieniowe, aby odfiltrować platformy, które ich nie obsługują.
+2. `context/foundation/prd.md` — jeśli jest obecny, umiejętność odczytuje kontekst produktu (skala użytkowników, wymagania dotyczące opóźnień), aby ważyć badania.
 
-## Initial Response
+## Początkowa odpowiedź
 
-When this skill is invoked:
+Gdy ta umiejętność zostanie wywołana:
 
-1. **If a path argument was provided** (e.g. `/10x-infra-research @context/foundation/tech-stack.md`), strip a leading `@` if present and use the path as the tech-stack location for this run.
-2. **If no argument**, check for `context/foundation/tech-stack.md`. Load it if present; proceed without it if absent.
+1. **Jeśli podano argument ścieżki** (np. `/10x-infra-research @context/foundation/tech-stack.md`), usuń początkowy `@`, jeśli jest obecny, i użyj ścieżki jako lokalizacji stosu technologicznego dla tego uruchomienia.
+2. **Jeśli brak argumentu**, sprawdź `context/foundation/tech-stack.md`. Załaduj go, jeśli jest obecny; kontynuuj bez niego, jeśli go brakuje.
 
-## Workflow
+## Przepływ pracy
 
-### Step 0 — Setup & context load
+### Krok 0 — Konfiguracja i ładowanie kontekstu
 
-Load context files. For each that exists, read it and extract the relevant fields:
+Załaduj pliki kontekstu. Dla każdego istniejącego pliku, odczytaj go i wyodrębnij odpowiednie pola:
 
-- `context/foundation/tech-stack.md` → language, framework, runtime, database (hard constraints for platform compatibility)
-- `context/foundation/prd.md` → expected user scale, latency/uptime requirements (soft weights for platform scoring)
+- `context/foundation/tech-stack.md` → język, framework, środowisko uruchomieniowe, baza danych (twarde ograniczenia dla kompatybilności platformy)
+- `context/foundation/prd.md` → oczekiwana skala użytkowników, wymagania dotyczące opóźnień/dostępności (miękkie wagi dla punktacji platformy)
 
-Load `references/agent-friendly-criteria.md` — this is the evaluation lens used in Step 3.
+Załaduj `references/agent-friendly-criteria.md` — to jest soczewka oceny używana w Kroku 3.
 
-Echo what was loaded:
+Wyświetl, co zostało załadowane:
 
 ```
 Context loaded:
@@ -77,70 +71,70 @@ Context loaded:
   Platform criteria: references/agent-friendly-criteria.md ✓
 ```
 
-### Step 1 — Developer interview (5 questions)
+### Krok 1 — Wywiad z deweloperem (5 pytań)
 
-Ask the user five Yes / No / Don't know questions. Ask the user for each, one at a time. Collect all answers before proceeding to research.
+Zadaj użytkownikowi pięć pytań typu Tak / Nie / Nie wiem. Zadawaj każde pytanie pojedynczo. Zbierz wszystkie odpowiedzi przed przejściem do badań.
 
-**Question 1**
+**Pytanie 1**
 
-Ask the user: "Does your app require persistent server-side connections — WebSockets, long-polling, or background worker processes that must stay alive between requests?"
-  Options:
-  - Yes: The app needs always-on processes or long-lived connections.
-  - No: Request/response only — each request is stateless.
-  - Don't know: I'm not sure yet.
+Zapytaj użytkownika: "Czy Twoja aplikacja wymaga trwałych połączeń po stronie serwera — WebSockets, long-polling, czy procesów roboczych w tle, które muszą pozostać aktywne między żądaniami?"
+  Opcje:
+  - "Tak" (Aplikacja potrzebuje zawsze aktywnych procesów lub długotrwałych połączeń.)
+  - "Nie" (Tylko żądanie/odpowiedź — każde żądanie jest bezstanowe.)
+  - "Nie wiem" (Jeszcze nie jestem pewien.)
 
-**Question 2**
+**Pytanie 2**
 
-Ask the user: "Is minimizing monthly cost the top priority at MVP stage, or is developer experience and speed of iteration more important?"
-  Options:
-  - Minimize cost: I want the cheapest viable option, even if DX is rougher.
-  - Prioritize DX: I'll pay a reasonable amount for a smoother development loop.
-  - Don't know / roughly equal: No strong preference.
+Zapytaj użytkownika: "Czy minimalizacja miesięcznych kosztów jest najwyższym priorytetem na etapie MVP, czy ważniejsze jest doświadczenie dewelopera i szybkość iteracji?"
+  Opcje:
+  - "Minimalizuj koszty" (Chcę najtańszą możliwą opcję, nawet jeśli DX jest trudniejszy.)
+  - "Priorytetyzuj DX" (Zapłacę rozsądną kwotę za płynniejszy cykl rozwoju.)
+  - "Nie wiem / mniej więcej równo" (Brak silnych preferencji.)
 
-**Question 3**
+**Pytanie 3**
 
-Ask the user: "Do you or your team already have hands-on experience with any specific platform you'd feel comfortable deploying to?"
-  Options:
-  - Yes — Vercel / Netlify: Comfortable with JAMstack-style platforms.
-  - Yes — Cloudflare (Workers / Pages): Comfortable with edge-first deployment.
-  - Yes — Railway / Render / Fly.io: Comfortable with container-based PaaS.
-  - Yes — AWS / GCP / Azure: Comfortable with hyperscaler infrastructure.
-  - No strong familiarity: Open to whatever fits best.
+Zapytaj użytkownika: "Czy Ty lub Twój zespół macie już praktyczne doświadczenie z jakąkolwiek konkretną platformą, na którą czulibyście się komfortowo wdrażając?"
+  Opcje:
+  - "Tak — Vercel / Netlify" (Komfortowo z platformami w stylu JAMstack.)
+  - "Tak — Cloudflare (Workers / Pages)" (Komfortowo z wdrożeniami typu edge-first.)
+  - "Tak — Railway / Render / Fly.io" (Komfortowo z PaaS opartymi na kontenerach.)
+  - "Tak — AWS / GCP / Azure" (Komfortowo z infrastrukturą hyperscalerów.)
+  - "Brak silnej znajomości" (Otwarty na to, co najlepiej pasuje.)
 
-**Question 4**
+**Pytanie 4**
 
-Ask the user: "Do you expect the app to serve users globally (edge/CDN matters) or mainly from one region?"
-  Options:
-  - Global — latency across regions matters: Users will be on different continents.
-  - Single region is fine: All users are in one country / region.
-  - Don't know yet: Not sure about target geography.
+Zapytaj użytkownika: "Czy spodziewasz się, że aplikacja będzie obsługiwać użytkowników globalnie (ważne edge/CDN) czy głównie z jednego regionu?"
+  Opcje:
+  - "Globalnie — opóźnienia między regionami mają znaczenie" (Użytkownicy będą na różnych kontynentach.)
+  - "Jeden region jest w porządku" (Wszyscy użytkownicy są w jednym kraju / regionie.)
+  - "Jeszcze nie wiem" (Nie jestem pewien docelowej geografii.)
 
-**Question 5**
+**Pytanie 5**
 
-Ask the user: "Will the deployment need co-located managed services — database, object storage, queues — from the same platform, or are external providers fine?"
-  Options:
-  - Co-location preferred: I want DB, storage, etc. from the same vendor to keep it simple.
-  - External providers are fine: I'll use separate services (e.g., Supabase, Upstash, Cloudflare R2).
-  - Don't know yet: Haven't decided on data layer yet.
+Zapytaj użytkownika: "Czy wdrożenie będzie wymagało współlokowanych usług zarządzanych — bazy danych, przechowywania obiektów, kolejek — z tej samej platformy, czy zewnętrzni dostawcy są w porządku?"
+  Opcje:
+  - "Preferowana współlokacja" (Chcę bazę danych, przechowywanie itp. od tego samego dostawcy, aby było prosto.)
+  - "Zewnętrzni dostawcy są w porządku" (Użyję oddzielnych usług (np. Supabase, Upstash, Cloudflare R2).)
+  - "Jeszcze nie wiem" (Jeszcze nie zdecydowałem o warstwie danych.)
 
-Store all five answers as research constraints before moving to Step 2.
+Zapisz wszystkie pięć odpowiedzi jako ograniczenia badawcze przed przejściem do Kroku 2.
 
-### Step 2 — Parallel platform research
+### Krok 2 — Równoległe badanie platform
 
-Use subagents to research platforms in parallel. The goal is to gather enough signal to score each platform against the five criteria in `references/agent-friendly-criteria.md`, filtered by the hard constraints from the tech stack and interview answers.
+Użyj subagentów do równoległego badania platform. Celem jest zebranie wystarczającej ilości sygnałów, aby ocenić każdą platformę pod kątem pięciu kryteriów z `references/agent-friendly-criteria.md`, przefiltrowanych przez twarde ograniczenia ze stosu technologicznego i odpowiedzi z wywiadu.
 
-**Platform candidate pool** (research these, then score and narrow):
+**Pula kandydatów na platformy** (zbadaj je, a następnie oceń i zawęź):
 
-| Platform | Primary use case |
+| Platforma | Główny przypadek użycia |
 |---|---|
-| Cloudflare Workers + Pages | Edge-first, serverless JS/TS, global CDN |
-| Vercel | Frontend + serverless functions, Next.js-native |
-| Netlify | Frontend + serverless, JAMstack, form/auth primitives |
-| Fly.io | Container-based PaaS, persistent processes, multi-region |
-| Railway | Full-stack PaaS, databases co-located, fast DX |
-| Render | Container/static hosting, free tier, cron jobs |
+| Cloudflare Workers + Pages | Edge-first, serverless JS/TS, globalny CDN |
+| Vercel | Frontend + funkcje serverless, natywny Next.js |
+| Netlify | Frontend + serverless, JAMstack, prymitywy formularzy/autoryzacji |
+| Fly.io | PaaS oparty na kontenerach, trwałe procesy, wieloregionowy |
+| Railway | Full-stack PaaS, współlokowane bazy danych, szybki DX |
+| Render | Hosting kontenerów/statyczny, darmowy plan, zadania cron |
 
-For each platform, spawn a subagent with a focused research prompt. Run all six in parallel:
+Dla każdej platformy uruchom subagenta z ukierunkowanym zapytaniem badawczym. Uruchom wszystkie sześć równolegle:
 
 ```
 Research [Platform Name] as an MVP deployment target.
@@ -152,7 +146,7 @@ Focus on:
 4. Free tier and estimated cost at 10k-100k monthly requests
 5. Persistent process / WebSocket support (yes / no / limited)
 6. Co-located managed services (database, storage, queues)
-7. MCP server or your AI coding assistant integration (if any)
+7. MCP server or AI assistant integration (if any)
 8. Known limitations or gotchas for <framework from tech stack>
 9. Current status of every feature mentioned above: GA / beta / preview / deprecated / region-limited.
    For any non-GA feature, capture the explicit caveat and the date the status was checked.
@@ -161,21 +155,21 @@ Return: a brief factual summary (200-300 words) with evidence links. Mark every
 beta/preview/region-limited capability inline so it carries forward into the risk register.
 ```
 
-Use web search or web fetching tools to find current pricing pages, official docs, and recent community comparisons (look for content from 2024-2025).
+Użyj narzędzi do wyszukiwania w sieci lub pobierania stron internetowych, aby znaleźć aktualne strony z cennikami, oficjalną dokumentację i najnowsze porównania społeczności (szukaj treści z lat 2024-2025).
 
-After all subagents complete, synthesize their findings into a scoring matrix.
+Po zakończeniu pracy przez wszystkich subagentów, zsyntetyzuj ich ustalenia w matrycę punktacji.
 
-### Step 3 — Score and shortlist
+### Krok 3 — Ocena i lista skrócona
 
-Score each researched platform against the five criteria from `references/agent-friendly-criteria.md`. Apply hard filters first:
+Oceń każdą badaną platformę pod kątem pięciu kryteriów z `references/agent-friendly-criteria.md`. Najpierw zastosuj twarde filtry:
 
-**Hard filters** (a platform that fails these is dropped from shortlisting):
-- If interview Q1 = "Yes (persistent connections required)" → drop platforms that cannot run persistent processes (Netlify, Vercel serverless-only).
-- If tech stack uses a runtime not supported by a platform → drop that platform.
+**Twarde filtry** (platforma, która ich nie przejdzie, jest usuwana z listy skróconej):
+- Jeśli pytanie 1 z wywiadu = "Tak (wymagane trwałe połączenia)" → usuń platformy, które nie mogą uruchamiać trwałych procesów (Netlify, Vercel tylko serverless).
+- Jeśli stos technologiczny używa środowiska uruchomieniowego nieobsługiwanego przez platformę → usuń tę platformę.
 
-**Scoring** (Pass / Partial / Fail per criterion):
+**Punktacja** (Zaliczone / Częściowo / Niezaliczone dla każdego kryterium):
 
-| Platform | CLI-first | Managed/Serverless | Agent-readable docs | Stable deploy API | MCP / Integration | Total |
+| Platforma | CLI-first | Managed/Serverless | Dokumentacja czytelna dla agenta | Stabilne API wdrożeniowe | MCP / Integracja | Razem |
 |---|---|---|---|---|---|---|
 | Cloudflare | | | | | | |
 | Vercel | | | | | | |
@@ -184,15 +178,15 @@ Score each researched platform against the five criteria from `references/agent-
 | Railway | | | | | | |
 | Render | | | | | | |
 
-Soft-weight the criteria by interview answers:
-- Q2 "minimize cost" → penalize platforms with expensive base tiers.
-- Q3 "existing familiarity" → break ties in favor of the familiar platform.
-- Q4 "global reach" → prefer edge-native platforms.
-- Q5 "co-location preferred" → prefer platforms with integrated databases.
+Miękko waż kryteria według odpowiedzi z wywiadu:
+- Pytanie 2 "minimalizuj koszty" → karaj platformy z drogimi podstawowymi planami.
+- Pytanie 3 "istniejąca znajomość" → rozstrzygaj remisy na korzyść znanej platformy.
+- Pytanie 4 "globalny zasięg" → preferuj platformy edge-native.
+- Pytanie 5 "preferowana współlokacja" → preferuj platformy ze zintegrowanymi bazami danych.
 
-**Shortlist the top 3 platforms** by total score (after filters and weights). Present the shortlist with a one-paragraph rationale per platform before proceeding to cross-check.
+**Skróć listę do 3 najlepszych platform** według łącznej punktacji (po filtrach i wagach). Przedstaw listę skróconą z jednopoziomowym uzasadnieniem dla każdej platformy przed przejściem do weryfikacji krzyżowej.
 
-Print to user:
+Wydrukuj dla użytkownika:
 
 ```
 Shortlisted platforms:
@@ -203,55 +197,51 @@ Shortlisted platforms:
 Running anti-bias cross-check on the top recommendation (<Platform A>)...
 ```
 
-### Step 4 — Anti-bias cross-check
+### Krok 4 — Weryfikacja krzyżowa anty-uprzedzeniowa
 
-Run three cross-check prompts against the top-ranked platform. Execute these yourself (do not spawn subagents) — you are the skeptic.
+Uruchom trzy zapytania weryfikacji krzyżowej dla najwyżej ocenianej platformy. Wykonaj je samodzielnie (nie uruchamiaj subagentów) — jesteś sceptykiem.
 
-**Cross-check 1 — Devil's advocate**
+**Weryfikacja krzyżowa 1 — Adwokat diabła**
 
-Mentally apply this lens and write the output as a numbered list of weaknesses (3-5 items):
+Mentalnie zastosuj tę soczewkę i zapisz wynik jako numerowaną listę słabych stron (3-5 pozycji):
 
-> Act as an extremely skeptical and experienced software architect. Your only job is to find all possible weaknesses, hidden costs, technical risks, and reasons why deploying `<tech stack>` on `<Platform A>` could fail in practice for this MVP. Be specific — name the failure modes, not categories.
+> Działaj jako niezwykle sceptyczny i doświadczony architekt oprogramowania. Twoim jedynym zadaniem jest znalezienie wszystkich możliwych słabych stron, ukrytych kosztów, ryzyk technicznych i powodów, dla których wdrożenie `<tech stack>` na `<Platform A>` mogłoby zakończyć się niepowodzeniem w praktyce dla tego MVP. Bądź konkretny — nazwij tryby awarii, a nie kategorie.
 
-**Cross-check 2 — Pre-mortem**
+**Weryfikacja krzyżowa 2 — Pre-mortem**
 
-Mentally apply this lens and write a short narrative (150-200 words):
+Mentalnie zastosuj tę soczewkę i napisz krótką narrację (150-200 słów):
 
-> The team deployed `<tech stack>` on `<Platform A>` for their MVP. Six months later, the decision turned out to be a complete disaster. Walk through the incorrect assumptions, technical decisions, and underestimated risks that led to this failure — step by step.
+> Zespół wdrożył `<tech stack>` na `<Platform A>` dla swojego MVP. Sześć miesięcy później decyzja okazała się kompletną katastrofą. Przejdź przez błędne założenia, decyzje techniczne i niedoszacowane ryzyka, które doprowadziły do tej porażki — krok po kroku.
 
-**Cross-check 3 — Unknown unknowns**
+**Weryfikacja krzyżowa 3 — Nieznane niewiadome**
 
-Mentally apply this lens and surface 3-5 things the user may not be aware of:
+Mentalnie zastosuj tę soczewkę i przedstaw 3-5 rzeczy, o których użytkownik może nie wiedzieć:
 
-> When deploying `<tech stack>` on `<Platform A>`, what are the 'unknown unknowns' — things the user should know before starting work that are not obvious from the platform's marketing page or docs?
+> Podczas wdrażania `<tech stack>` na `<Platform A>`, jakie są „nieznane niewiadome” — rzeczy, o których użytkownik powinien wiedzieć przed rozpoczęciem pracy, a które nie są oczywiste ze strony marketingowej platformy ani dokumentacji?
 
-After all three cross-checks, present the findings to the user and ask:
+Po wszystkich trzech weryfikacjach krzyżowych, przedstaw wyniki użytkownikowi i zapytaj:
 
-Ask the user: "The anti-bias cross-check surfaced some risks for <Platform A>. How would you like to proceed?"
-  Options:
-  - Proceed with <Platform A> — risks noted: The risks are manageable. Include them in the output's risk register.
-  - Swap to <Platform B> instead: The risks are significant enough to prefer the second option.
-  - Swap to <Platform C> instead: The risks are significant enough to prefer the third option.
+Zapytaj użytkownika: "Weryfikacja krzyżowa anty-uprzedzeniowa ujawniła pewne ryzyka dla <Platform A>. Jak chcesz postąpić?"
+  Opcje:
+  - "Kontynuuj z <Platform A> — ryzyka zanotowane" (Ryzyka są do opanowania. Uwzględnij je w rejestrze ryzyka w wynikach.)
+  - "Zmień na <Platform B>" (Ryzyka są wystarczająco znaczące, aby preferować drugą opcję.)
+  - "Zmień na <Platform C>" (Ryzyka są wystarczająco znaczące, aby preferować trzecią opcję.)
 
-Apply the user's choice. If they swap to B or C, run the three cross-checks again for the new top pick and present results (no need to ask again — record it and proceed).
+Zastosuj wybór użytkownika. Jeśli zmienią na B lub C, ponownie uruchom trzy weryfikacje krzyżowe dla nowego najlepszego wyboru i przedstaw wyniki (nie trzeba pytać ponownie — zanotuj i kontynuuj).
 
-### Step 5 — Write output
+### Krok 5 — Zapisz wynik
 
-Check for collision:
+Sprawdź kolizję, próbując odczytać `context/foundation/infrastructure.md`.
 
-```bash
-test -f context/foundation/infrastructure.md
-```
+Jeśli plik istnieje, zapytaj:
 
-If the file exists, ask:
+Zapytaj użytkownika: "context/foundation/infrastructure.md już istnieje. Jak chcesz postąpić?"
+  Opcje:
+  - "Nadpisz (Zalecane)" (Zastąp istniejący plik. Poprzednia wersja zostanie utracona, chyba że zostanie zatwierdzona.)
+  - "Zapisz jako infrastructure-v2.md" (Zachowaj historię. Nowy plik zostanie umieszczony w następnym dostępnym miejscu wersji.)
+  - "Przerwij" (Wyjdź bez zapisu. Rekomendacja zostanie zachowana tylko w czacie.)
 
-Ask the user: "context/foundation/infrastructure.md already exists. How would you like to proceed?"
-  Options:
-  - Overwrite (Recommended): Replace the existing file. The prior version is lost unless committed.
-  - Save as infrastructure-v2.md: Preserve history. New file lands at the next available version slot.
-  - Abort: Exit without writing. The recommendation is preserved in chat only.
-
-Build the output file:
+Zbuduj plik wyjściowy:
 
 ```markdown
 ---
@@ -334,9 +324,9 @@ The following were not evaluated in this research:
 - Production-scale architecture (multi-region, HA, DR)
 ```
 
-Write to `context/foundation/infrastructure.md` (or the versioned path if chosen). Create `context/foundation/` if it doesn't exist.
+Zapisz zawartość do `context/foundation/infrastructure.md` (lub ścieżki z wersją, jeśli wybrano zapis z wersją). Utwórz `context/foundation/`, jeśli nie istnieje.
 
-After the write, copy the next-step hint to clipboard:
+Po zapisie skopiuj wskazówkę dotyczącą następnego kroku do schowka, używając odpowiednich poleceń powłoki dla systemu operacyjnego użytkownika:
 
 ```bash
 echo -n "/10x-implement" | pbcopy 2>/dev/null || echo -n "/10x-implement" | clip.exe 2>/dev/null || echo -n "/10x-implement" | xclip -selection clipboard 2>/dev/null || true
@@ -347,7 +337,7 @@ echo -n "/10x-implement" | pbcopy 2>/dev/null || echo -n "/10x-implement" | clip
 Set-Clipboard "/10x-implement"
 ```
 
-Print:
+Wydrukuj:
 
 ```
 ═══════════════════════════════════════════════════════════
@@ -363,30 +353,30 @@ Print:
 ═══════════════════════════════════════════════════════════
 ```
 
-STOP. Do not chain into `/10x-implement` automatically — the user runs it when ready.
+STOP. Nie przechodź automatycznie do `/10x-implement` — użytkownik uruchamia go, gdy jest gotowy.
 
-## Output
+## Wynik
 
-Single file written: `context/foundation/infrastructure.md` (or `infrastructure-vN.md` if a versioned save was picked).
+Zapisany pojedynczy plik: `context/foundation/infrastructure.md` (lub `infrastructure-vN.md`, jeśli wybrano zapis z wersją).
 
-## References
+## Referencje
 
-- `references/agent-friendly-criteria.md` — the five platform criteria, scoring guidance, and weight notes.
+- `references/agent-friendly-criteria.md` — pięć kryteriów platformy, wskazówki dotyczące punktacji i uwagi dotyczące wag.
 
-## Critical guardrails
+## Krytyczne zabezpieczenia
 
-1. **Research before recommending.** Never recommend a platform based solely on training-data familiarity. Always run the parallel web research (Step 2) with web search / web fetching tools before scoring. Stale impressions about pricing or feature support lead to wrong recommendations.
+1. **Badaj przed rekomendowaniem.** Nigdy nie rekomenduj platformy wyłącznie na podstawie znajomości danych szkoleniowych. Zawsze przeprowadzaj równoległe badania internetowe (Krok 2) za pomocą narzędzi do wyszukiwania/pobierania stron internetowych przed punktacją. Przestarzałe wrażenia dotyczące cen lub obsługi funkcji prowadzą do błędnych rekomendacji.
 
-2. **Tech stack is a hard constraint, not a preference.** If the tech stack requires a runtime that a platform doesn't support (e.g., Python on a JS-only edge runtime), that platform is dropped — no amount of scoring overrides it.
+2. **Stos technologiczny to twarde ograniczenie, a nie preferencja.** Jeśli stos technologiczny wymaga środowiska uruchomieniowego, którego platforma nie obsługuje (np. Python na środowisku uruchomieniowym edge tylko dla JS), ta platforma jest odrzucana — żadna ilość punktacji tego nie zmieni.
 
-3. **Three candidates, not one.** Always shortlist three platforms. The user needs alternatives in case the top pick is blocked by cost, vendor lock-in, or organizational constraints.
+3. **Trzech kandydatów, nie jeden.** Zawsze skracaj listę do trzech platform. Użytkownik potrzebuje alternatyw na wypadek, gdyby najlepszy wybór został zablokowany przez koszty, uzależnienie od dostawcy lub ograniczenia organizacyjne.
 
-4. **Anti-bias is non-negotiable.** The three cross-check prompts (devil's advocate, pre-mortem, unknown unknowns) run on every invocation. Do not skip them even when the top platform is an obvious fit. The cross-check surfaces risks that obvious fits hide.
+4. **Anty-uprzedzenia są niepodlegające negocjacjom.** Trzy zapytania weryfikacji krzyżowej (adwokat diabła, pre-mortem, nieznane niewiadome) są uruchamiane przy każdym wywołaniu. Nie pomijaj ich, nawet jeśli najlepsza platforma jest oczywistym wyborem. Weryfikacja krzyżowa ujawnia ryzyka, które oczywiste wybory ukrywają.
 
-5. **Interview answers drive weights, not exclusions.** Except for the hard filter on persistent connections vs. serverless, interview answers adjust weights — they don't disqualify platforms. A cost-sensitive user might still pick Fly.io if the DX score is high enough; the interview answer informs the scoring, not the candidate pool.
+5. **Odpowiedzi z wywiadu napędzają wagi, a nie wykluczenia.** Z wyjątkiem twardego filtra dotyczącego trwałych połączeń vs. serverless, odpowiedzi z wywiadu dostosowują wagi — nie dyskwalifikują platform. Użytkownik wrażliwy na koszty może nadal wybrać Fly.io, jeśli wynik DX jest wystarczająco wysoki; odpowiedź z wywiadu informuje o punktacji, a nie o puli kandydatów.
 
-6. **Scope is MVP, not production.** The skill optimizes for speed of iteration, low operational overhead, and cost at low traffic. Do not introduce production-scale concerns (multi-region failover, SLA commitments, dedicated support tiers) unless the PRD explicitly calls for them.
+6. **Zakres to MVP, nie produkcja.** Umiejętność optymalizuje szybkość iteracji, niskie koszty operacyjne i koszty przy niskim ruchu. Nie wprowadzaj kwestii związanych ze skalą produkcyjną (przełączanie awaryjne w wielu regionach, zobowiązania SLA, dedykowane poziomy wsparcia), chyba że PRD wyraźnie tego wymaga.
 
-7. **Skill-internal labels stay internal.** When speaking to the user, never reference step numbers or internal field names. Use plain language: "the platform comparison", "the recommended option", "the risk register".
+7. **Etykiety wewnętrzne umiejętności pozostają wewnętrzne.** Rozmawiając z użytkownikiem, nigdy nie odwołuj się do numerów kroków ani wewnętrznych nazw pól. Używaj prostego języka: "porównanie platform", "zalecana opcja", "rejestr ryzyka".
 
-8. **Validate "Getting Started" commands against the exact versions in the tech stack, not platform docs in general.** Platform adapters, CLIs, and deployment toolchains evolve rapidly — a workflow that was canonical at one major version may be superseded or actively wrong at the next. Before writing any CLI command or local dev recommendation in the "Getting Started" section, look up what the specific adapter/tool version in `tech-stack.md` actually does today. Pay particular attention to: (a) whether the framework's dev server already provides runtime fidelity for the target platform (making a separate platform-native dev command redundant or legacy), (b) whether APIs, config keys, or environment access patterns changed between major versions, and (c) whether platform tooling was merged, renamed, or deprecated between what the general docs describe and what the project's pinned versions actually ship. Surface any version-driven behavior differences as "Unknown Unknowns" in the cross-check, and reflect only the correct, version-accurate workflow in "Getting Started". Never copy CLI commands verbatim from platform marketing pages or general tutorials without confirming they apply to the exact stack versions in use.
+8. **Weryfikuj polecenia "Getting Started" pod kątem dokładnych wersji w stosie technologicznym, a nie ogólnej dokumentacji platformy.** Adaptery platform, CLI i narzędzia do wdrażania szybko ewoluują — przepływ pracy, który był kanoniczny w jednej głównej wersji, może zostać zastąpiony lub być aktywnie błędny w następnej. Przed napisaniem jakiegokolwiek polecenia CLI lub lokalnej rekomendacji deweloperskiej w sekcji "Getting Started", sprawdź, co faktycznie robi dziś konkretna wersja adaptera/narzędzia w `tech-stack.md`. Zwróć szczególną uwagę na: (a) czy serwer deweloperski frameworka już zapewnia wierność środowiska uruchomieniowego dla docelowej platformy (czyniąc oddzielne polecenie deweloperskie natywne dla platformy zbędnym lub przestarzałym), (b) czy interfejsy API, klucze konfiguracyjne lub wzorce dostępu do środowiska zmieniły się między głównymi wersjami, oraz (c) czy narzędzia platformy zostały połączone, zmienione nazwy lub wycofane między tym, co opisuje ogólna dokumentacja, a tym, co faktycznie dostarczają przypięte wersje projektu. Wszelkie różnice w zachowaniu wynikające z wersji należy przedstawić jako "Nieznane niewiadome" w weryfikacji krzyżowej i odzwierciedlić tylko prawidłowy, zgodny z wersją przepływ pracy w sekcji "Getting Started". Nigdy nie kopiuj poleceń CLI dosłownie ze stron marketingowych platform ani ogólnych samouczków bez potwierdzenia, że mają zastosowanie do dokładnych używanych wersji stosu.
