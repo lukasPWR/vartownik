@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "vartownik",
+	"name": "vartownik-staging",
 	"main": "./dist/_worker.js/index.js",
 	"compatibility_date": "2026-06-04",
 	"compatibility_flags": [
