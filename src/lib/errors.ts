@@ -72,3 +72,11 @@ export class BadRequestError extends Error {
     this.name = "BadRequestError";
   }
 }
+
+/** Request payload or referenced data is structurally invalid for the requested operation. */
+export class UnprocessableEntityError extends Error {
+  constructor(message = "Unprocessable entity.") {
+    super(message);
+    this.name = "UnprocessableEntityError";
+  }
+}

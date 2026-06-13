@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { z } from "zod";
 
 import { createSession, listSessions } from "@/lib/services/sessions.service";
-import { BatchNotFoundError, BatchNotSuccessError } from "@/lib/errors";
+import { BatchNotFoundError, BatchNotSuccessError, UnprocessableEntityError } from "@/lib/errors";
 
 export const prerender = false;
 
@@ -114,6 +114,12 @@ export const POST: APIRoute = async ({ locals, request }) => {
       });
     }
     if (err instanceof BatchNotSuccessError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (err instanceof UnprocessableEntityError) {
       return new Response(JSON.stringify({ error: err.message }), {
         status: 422,
         headers: { "Content-Type": "application/json" },

@@ -22,6 +22,9 @@ const RATE_LIMIT_MAX = 100;
 const RATE_LIMIT_WINDOW_MINUTES = 60;
 const MAX_RETRIES = 2;
 const QUESTIONS_PER_ROUND = 10;
+const MAX_GENERATION_CHUNK_SIZE = 10;
+const RETRYABLE_PROVIDER_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+const RETRY_BASE_DELAY_MS = 1_000;
 
 // ---------------------------------------------------------------------------
 // Zod schemas for AI response validation
@@ -40,6 +43,33 @@ const AiQuestionSchema = z.object({
 const AiResponseSchema = z.array(AiQuestionSchema);
 
 type AiQuestion = z.infer<typeof AiQuestionSchema>;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableProviderError(error: OpenRouterError): boolean {
+  return error.statusCode !== undefined && RETRYABLE_PROVIDER_STATUS_CODES.has(error.statusCode);
+}
+
+function getRetryDelayMs(attempt: number): number {
+  return RETRY_BASE_DELAY_MS * 2 ** attempt;
+}
+
+function splitIntoGenerationChunks(totalCount: number, chunkSize: number): number[] {
+  const chunks: number[] = [];
+  let remaining = totalCount;
+
+  while (remaining > 0) {
+    const currentChunkSize = Math.min(chunkSize, remaining);
+    chunks.push(currentChunkSize);
+    remaining -= currentChunkSize;
+  }
+
+  return chunks;
+}
 
 // ---------------------------------------------------------------------------
 // Rate limiting
@@ -195,10 +225,14 @@ async function callAiWithRetry(
 
       return { questions: validated, estimatedCostUsd, retryCount };
     } catch (error) {
-      // Provider HTTP errors (4xx/5xx) should not be retried — rethrow immediately
-      if (error instanceof OpenRouterError) {
+      if (error instanceof OpenRouterError && !isRetryableProviderError(error)) {
         throw error;
       }
+
+      if (attempt < MAX_RETRIES) {
+        await delay(getRetryDelayMs(attempt));
+      }
+
       lastError = error instanceof Error ? error : new Error(String(error));
       console.error(`[generation-batch] Attempt ${attempt + 1} failed`, { model, error: lastError.message });
     }
@@ -366,11 +400,26 @@ export async function createGenerationBatch(
   let retryCount: number;
 
   try {
-    ({ questions, estimatedCostUsd, retryCount } = await callAiWithRetry(
-      command.model,
-      command.prompt_version,
-      command.requested_questions_count
-    ));
+    const chunkSizes = splitIntoGenerationChunks(command.requested_questions_count, MAX_GENERATION_CHUNK_SIZE);
+    const generatedQuestions: AiQuestion[] = [];
+    let totalEstimatedCostUsd = 0;
+    let totalHasEstimatedCost = false;
+    let highestRetryCount = 0;
+
+    for (const chunkSize of chunkSizes) {
+      const chunkResult = await callAiWithRetry(command.model, command.prompt_version, chunkSize);
+      generatedQuestions.push(...chunkResult.questions);
+      highestRetryCount = Math.max(highestRetryCount, chunkResult.retryCount);
+
+      if (chunkResult.estimatedCostUsd !== null) {
+        totalHasEstimatedCost = true;
+        totalEstimatedCostUsd += chunkResult.estimatedCostUsd;
+      }
+    }
+
+    questions = generatedQuestions;
+    estimatedCostUsd = totalHasEstimatedCost ? parseFloat(totalEstimatedCostUsd.toFixed(6)) : null;
+    retryCount = highestRetryCount;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await finalizeBatch(batchId, { success: false, errorMessage: message, retryCount: MAX_RETRIES }, supabase);

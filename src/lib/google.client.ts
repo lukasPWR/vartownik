@@ -20,7 +20,7 @@ interface GeminiResponse {
       parts: GeminiPart[];
       role: string;
     };
-    finishReason: string;
+    finishReason?: string;
   }[];
   usageMetadata?: {
     promptTokenCount: number;
@@ -53,6 +53,7 @@ export async function callGoogle(
     generationConfig: {
       temperature: 0.7,
       maxOutputTokens: 8192,
+      responseMimeType: "application/json",
     },
   };
 
@@ -97,9 +98,16 @@ export async function callGoogle(
     throw new OpenRouterError("Google Gemini returned a non-JSON response");
   }
 
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data.candidates?.[0];
+  const content = candidate?.content?.parts?.[0]?.text;
   if (!content) {
     throw new OpenRouterError("Google Gemini response contained no text content");
+  }
+
+  if (candidate?.finishReason && candidate.finishReason !== "STOP") {
+    throw new OpenRouterError(
+      `Google Gemini stopped before completing the response (finishReason=${candidate.finishReason})`
+    );
   }
 
   const estimatedCostUsd = data.usageMetadata ? estimateGeminiCost(modelId, data.usageMetadata.totalTokenCount) : null;
