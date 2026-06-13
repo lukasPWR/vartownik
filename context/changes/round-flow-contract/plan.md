@@ -152,23 +152,23 @@ Warstwa `sessions.service` staje się właścicielem materializacji sesji z batc
 ### Phase 1: Materializacja sesji z batcha
 
 #### Automated
-- [x] 1.1 Rozszerzyć `createSession()` o odczyt i walidację `generation_batches.response_payload.rounds`
-- [x] 1.2 Materializować rekordy `rounds` przy tworzeniu sesji i zwracać je w `SessionCreatedDTO`
-- [x] 1.3 Zmapować błędy materializacji w `POST /api/sessions`
-- [x] 1.4 Uruchomić `npm run lint`
+- [x] 1.1 Rozszerzyć `createSession()` o odczyt i walidację `generation_batches.response_payload.rounds` — 9f63ef6
+- [x] 1.2 Materializować rekordy `rounds` przy tworzeniu sesji i zwracać je w `SessionCreatedDTO` — 9f63ef6
+- [x] 1.3 Zmapować błędy materializacji w `POST /api/sessions` — 9f63ef6
+- [x] 1.4 Uruchomić `npm run lint` — 9f63ef6
 
 #### Manual
-- [x] 1.5 Potwierdzić, że start gry po generacji nie kończy się redirectem z powodu braku rund
-- [x] 1.6 Potwierdzić, że nowa sesja pozostawia poprzednią `in_progress` jako `abandoned`
+- [x] 1.5 Potwierdzić, że start gry po generacji nie kończy się redirectem z powodu braku rund — 9f63ef6
+- [x] 1.6 Potwierdzić, że nowa sesja pozostawia poprzednią `in_progress` jako `abandoned` — 9f63ef6
 
 ### Phase 2: Odczyt rundy i zapis prób
 
 #### Automated
-- [ ] 2.1 Dodać serwis odczytu rundy z blokadą dostępu do rundy `n+1` przed ukończeniem `n`
-- [ ] 2.2 Dodać serwis zapisu próby z walidacją ownership, pozycji i pytania
-- [ ] 2.3 Wystawić `GET /api/sessions/:sessionId/rounds/:position` i `POST /api/rounds/:roundId/attempts`
-- [ ] 2.4 Zweryfikować, że duplikat próby zwraca `409`, a `correct_answer` pozostaje ukryte dla `in_progress`
-- [ ] 2.5 Uruchomić `npm run lint`
+- [x] 2.1 Dodać serwis odczytu rundy z blokadą dostępu do rundy `n+1` przed ukończeniem `n`
+- [x] 2.2 Dodać serwis zapisu próby z walidacją ownership, pozycji i pytania
+- [x] 2.3 Wystawić `GET /api/sessions/:sessionId/rounds/:position` i `POST /api/rounds/:roundId/attempts`
+- [x] 2.4 Zweryfikować, że duplikat próby zwraca `409`, a `correct_answer` pozostaje ukryte dla `in_progress`
+- [x] 2.5 Uruchomić `npm run lint`
 
 #### Manual
 - [ ] 2.6 Potwierdzić, że istniejący `GameView` pobiera rundę 1 bez zmiany kontraktu
