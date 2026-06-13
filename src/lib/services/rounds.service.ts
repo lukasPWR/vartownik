@@ -1,6 +1,12 @@
 import type { SupabaseClientType } from "@/db/supabase.client";
-import { BadRequestError, NotFoundError, UnprocessableEntityError } from "@/lib/errors";
-import type { CorrectAnswerDTO, RoundDTO, RoundQuestionDTO, RoundQuestionGroupDTO } from "@/types";
+import { BadRequestError, ConflictError, NotFoundError, UnprocessableEntityError } from "@/lib/errors";
+import type {
+  CompleteRoundResponseDTO,
+  CorrectAnswerDTO,
+  RoundDTO,
+  RoundQuestionDTO,
+  RoundQuestionGroupDTO,
+} from "@/types";
 import { z } from "zod";
 
 const SESSION_TOTAL_ROUNDS = 4;
@@ -36,6 +42,16 @@ interface QuestionRow {
   correct_answer: unknown;
   question_categories: { categories: { name: string } | null }[];
 }
+
+const CompleteRoundTransitionResultSchema = z.object({
+  session_id: z.string().uuid(),
+  round_id: z.string().uuid(),
+  round_position: z.number().int().positive(),
+  round_status: z.string(),
+  round_completed_at: z.string().datetime(),
+  session_status: z.enum(["in_progress", "completed", "abandoned"]),
+  session_completed_at: z.string().datetime().nullable(),
+});
 
 function validateBatchRoundsPayload(payload: unknown): RoundQuestionGroupDTO[] {
   const parsed = BatchResponsePayloadSchema.safeParse(payload);
@@ -251,5 +267,65 @@ export async function getRoundByPosition(
     timer_seconds: session.timer_seconds,
     questions,
     started_at: round.started_at,
+  };
+}
+
+function mapCompleteRoundRpcError(error: { message: string }): never {
+  switch (error.message) {
+    case "Session not found.":
+    case "Round not found.":
+      throw new NotFoundError(error.message);
+    case "Round has already been completed.":
+      throw new ConflictError(error.message);
+    case "You must complete the previous round before completing this one.":
+    case "Round cannot be completed until all attempts are recorded.":
+    case "Session is missing a previous round.":
+    case "Round can only be completed for an in-progress session.":
+      throw new BadRequestError(error.message);
+    default:
+      throw error;
+  }
+}
+
+interface CompleteRoundRpcResponse {
+  data: unknown[] | null;
+  error: { message: string } | null;
+}
+
+export async function completeRound(
+  supabase: SupabaseClientType,
+  userId: string,
+  sessionId: string,
+  roundId: string
+): Promise<CompleteRoundResponseDTO> {
+  const rpcClient = supabase as SupabaseClientType & {
+    rpc: (fn: string, args: Record<string, unknown>) => Promise<CompleteRoundRpcResponse>;
+  };
+
+  const { data, error } = await rpcClient.rpc("complete_round_session_transition", {
+    p_user_id: userId,
+    p_session_id: sessionId,
+    p_round_id: roundId,
+  });
+
+  if (error) {
+    mapCompleteRoundRpcError(error);
+  }
+
+  const transition = CompleteRoundTransitionResultSchema.parse(data?.[0]);
+  const completedRound = await getRoundByPosition(supabase, userId, transition.session_id, transition.round_position);
+
+  return {
+    ...completedRound,
+    questions: completedRound.questions.map((question) => {
+      if (!question.correct_answer) {
+        throw new Error("Completed round response is missing a revealed correct answer.");
+      }
+
+      return {
+        ...question,
+        correct_answer: question.correct_answer,
+      };
+    }),
   };
 }

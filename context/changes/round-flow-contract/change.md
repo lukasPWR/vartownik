@@ -2,9 +2,9 @@
 change_id: round-flow-contract
 roadmap_id: F-01
 title: Ustal minimalna umowe przeplywu rundy
-status: implementing
+status: implemented
 created: 2026-06-10
-updated: 2026-06-10
+updated: 2026-06-13
 ---
 
 # round-flow-contract

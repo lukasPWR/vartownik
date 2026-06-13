@@ -164,25 +164,27 @@ Warstwa `sessions.service` staje się właścicielem materializacji sesji z batc
 ### Phase 2: Odczyt rundy i zapis prób
 
 #### Automated
-- [x] 2.1 Dodać serwis odczytu rundy z blokadą dostępu do rundy `n+1` przed ukończeniem `n`
-- [x] 2.2 Dodać serwis zapisu próby z walidacją ownership, pozycji i pytania
-- [x] 2.3 Wystawić `GET /api/sessions/:sessionId/rounds/:position` i `POST /api/rounds/:roundId/attempts`
-- [x] 2.4 Zweryfikować, że duplikat próby zwraca `409`, a `correct_answer` pozostaje ukryte dla `in_progress`
-- [x] 2.5 Uruchomić `npm run lint`
+- [x] 2.1 Dodać serwis odczytu rundy z blokadą dostępu do rundy `n+1` przed ukończeniem `n` — 5f731d5
+- [x] 2.2 Dodać serwis zapisu próby z walidacją ownership, pozycji i pytania — 5f731d5
+- [x] 2.3 Wystawić `GET /api/sessions/:sessionId/rounds/:position` i `POST /api/rounds/:roundId/attempts` — 5f731d5
+- [x] 2.4 Zweryfikować, że duplikat próby zwraca `409`, a `correct_answer` pozostaje ukryte dla `in_progress` — 5f731d5
+- [x] 2.5 Uruchomić `npm run lint` — 5f731d5
 
 #### Manual
-- [ ] 2.6 Potwierdzić, że istniejący `GameView` pobiera rundę 1 bez zmiany kontraktu
-- [ ] 2.7 Potwierdzić, że `QuizFocusMode` zapisuje próby bez ujawniania odpowiedzi w trakcie rundy
+- [x] 2.6 Potwierdzić, że istniejący `GameView` pobiera rundę 1 bez zmiany kontraktu
+- [x] 2.7 Potwierdzić, że `QuizFocusMode` zapisuje próby bez ujawniania odpowiedzi w trakcie rundy
 
 ### Phase 3: Complete round i finalizacja sesji
 
 #### Automated
-- [ ] 3.1 Dodać `completeRound()` z walidacją kompletu prób i ochroną przed ponownym `complete`
-- [ ] 3.2 Wystawić `POST /api/sessions/:sessionId/rounds/:roundId/complete`
-- [ ] 3.3 Domknąć automatyczne `sessions.status = completed` dla rundy 4
-- [ ] 3.4 Zweryfikować, że `complete` odsłania odpowiedzi, ale nie ustawia jeszcze `verdict`
-- [ ] 3.5 Uruchomić `npm run lint`
+- [x] 3.1 Dodać `completeRound()` z walidacją kompletu prób i ochroną przed ponownym `complete`
+- [x] 3.2 Wystawić `POST /api/sessions/:sessionId/rounds/:roundId/complete`
+- [x] 3.3 Domknąć automatyczne `sessions.status = completed` dla rundy 4
+- [x] 3.4 Zweryfikować, że `complete` odsłania odpowiedzi, ale nie ustawia jeszcze `verdict`
+- [x] 3.5 Uruchomić `npm run lint`
 
 #### Manual
-- [ ] 3.6 Potwierdzić, że backend odsłania odpowiedzi dopiero po jawnym końcu rundy
-- [ ] 3.7 Potwierdzić, że po ukończeniu ostatniej rundy sesja jest gotowa pod późniejsze summary/statystyki
+- [x] 3.6 Potwierdzić, że backend odsłania odpowiedzi dopiero po jawnym końcu rundy
+- [x] 3.7 Potwierdzić, że po ukończeniu ostatniej rundy sesja jest gotowa pod późniejsze summary/statystyki
+
+
