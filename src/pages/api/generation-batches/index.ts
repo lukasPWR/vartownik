@@ -2,7 +2,11 @@ import type { APIRoute } from "astro";
 import { z } from "zod";
 
 import { createClient } from "@/lib/supabase";
-import { createGenerationBatch } from "@/lib/services/generation-batch.service";
+import {
+  createGenerationBatch,
+  listGenerationBatches,
+  ListGenerationBatchesQuerySchema,
+} from "@/lib/services/generation-batch.service";
 import { AiParseError, OpenRouterError, RateLimitError } from "@/lib/errors";
 
 export const prerender = false;
@@ -13,7 +17,7 @@ export const prerender = false;
 
 const CreateGenerationBatchSchema = z.object({
   model: z.string().min(1).max(100),
-  provider: z.enum(["openrouter", "google"]),
+  provider: z.literal("google"),
   prompt_version: z.string().regex(/^v\d+$/, "prompt_version must match pattern v<number> (e.g. v1)"),
   requested_questions_count: z.number().int().positive().max(200).default(40),
 });
@@ -97,6 +101,58 @@ export const POST: APIRoute = async (context) => {
     // Unexpected error — log with context but don't leak internals
     console.error("[POST /api/generation-batches] Unexpected error", {
       userId: locals.user?.id ?? TEST_USER_ID,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// GET /api/generation-batches — paginated list for the authenticated user
+// ---------------------------------------------------------------------------
+
+export const GET: APIRoute = async ({ locals, request, cookies }) => {
+  // AUTH DISABLED FOR TESTING — restore before production
+  // if (!locals.user) {
+  //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
+  //     status: 401,
+  //     headers: { "Content-Type": "application/json" },
+  //   });
+  // }
+  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
+  const userId = locals.user?.id ?? TEST_USER_ID;
+
+  // Parse and validate query string params
+  const searchParams = new URL(request.url).searchParams;
+  const rawQuery = Object.fromEntries(searchParams);
+
+  const parsed = ListGenerationBatchesQuerySchema.safeParse(rawQuery);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({
+        error: "Validation failed",
+        issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  const supabase = createClient(request.headers, cookies);
+
+  try {
+    const result = await listGenerationBatches(supabase, parsed.data, userId);
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("[GET /api/generation-batches] Unexpected error", {
+      userId,
       error: error instanceof Error ? error.message : String(error),
     });
 

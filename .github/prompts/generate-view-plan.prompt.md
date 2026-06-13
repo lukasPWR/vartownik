@@ -10,30 +10,54 @@ Najpierw przejrzyj następujące informacje:
 2. Opis widoku:
    <view_description>
 
-### 2.4. Dashboard
+### 2.5. Widok gry — Ekran ładowania (Generation Loading)
 
-- **Ścieżka:** `/dashboard`
-- **Główny cel:** Centrum dowodzenia — przegląd statystyk, szybki start quizu, lista oczekujących recenzji.
+- **Ścieżka:** `/game` (stan wewnętrzny Vue island: `loading`)
+- **Główny cel:** Wizualna „poczekalnia" podczas generowania 40 pytań przez AI (~40s).
 - **Kluczowe informacje:**
-  - Ogólna skuteczność (% poprawnych odpowiedzi)
-  - Liczba ukończonych sesji
-  - Liczba oflagowanych pytań oczekujących na przegląd
-  - Lista ostatnich 10 sesji z wynikami
-  - Skuteczność per kategoria (wykres radarowy)
+  - Aktualny status generowania (pending, retry, success/failed)
+  - Rotacyjne ciekawostki piłkarskie
+  - Pasek postępu lub animacja ładowania
 - **Kluczowe komponenty:**
-  - **Widżet „Szybki start"** — przycisk „Generuj Quiz" uruchamiający generowanie nowej sesji
-  - **Widżet statystyk ogólnych** — karty z liczbami (łączne próby, skuteczność, sesje)
-  - **Widżet „Pending Reviews"** — lista oflagowanych pytań z szybkim linkiem do edycji
-  - **Wykres radarowy kategorii** — wizualizacja skuteczności per kategoria tematyczna (Vue island)
-  - **Lista ostatnich sesji** — tabela z datą, wynikiem, statusem i linkiem do szczegółów
+  - **Animacja ładowania** — pulsujący indykator procesu z fazami (np. „Generuję pytania…", „Weryfikuję jakość…", „Przygotowuję rundy…")
+  - **Karuzela ciekawostek** — rotacyjne karty z trivia piłkarskim (zmiana co 5-7 sekund)
+  - **Komunikat błędu** — wyświetlany w przypadku `422`, `429` lub `502` z opcją ponowienia
+  - **Przycisk anulowania** — pozwala wrócić do dashboardu
 - **UX / Dostępność / Bezpieczeństwo:**
-  - Renderowanie SSR (Astro) — szybki czas pierwszego malowania
-  - Widżety interaktywne jako Vue islands (wykres, lista sesji z paginacją)
-  - Subtelny indykator prywatności danych (ikona kłódki z tooltipem „Tylko Twoje dane")
-  - Responsywny grid: 2 kolumny na desktop, 1 kolumna na mobile
-  - Dane ładowane server-side (brak flickeringu)
-- **Mapowanie API:** `GET /api/stats/overview`, `GET /api/stats/categories`, `GET /api/sessions`
-- **Mapowanie US:** US-006
+  - `aria-live="polite"` na statusie generowania
+  - Estymowany czas do wyświetlenia (pasek postępu nie liniowy, lecz fazowy)
+  - Brak możliwości opuszczenia bez potwierdzenia po rozpoczęciu generowania
+- **Mapowanie API:** `POST /api/generation-batches`, `GET /api/generation-batches/:id` (polling), `POST /api/sessions`
+- **Mapowanie US:** US-002
+
+---
+
+### 2.6. Widok gry — Pytanie (Quiz Focus Mode)
+
+- **Ścieżka:** `/game` (stan wewnętrzny Vue island: `playing`)
+- **Główny cel:** Prezentacja pojedynczego pytania z timerem i scratchpadem w trybie pełnego skupienia.
+- **Kluczowe informacje:**
+  - Treść pytania
+  - Kategoria pytania (badge)
+  - Timer odliczający (15-30s)
+  - Numer pytania w rundzie (np. „3/10") i numer rundy (np. „Runda 2/4")
+  - Scratchpad z odpowiedzią roboczą
+- **Kluczowe komponenty:**
+  - **Nagłówek rundy** — minimalistyczny: numer rundy + numer pytania + difficulty badge
+  - **Blok pytania** — treść pytania z fluid typography (dynamiczne skalowanie czcionki dla długich pytań); opcjonalny obraz z Supabase Storage
+  - **Timer** — wizualny pasek/koło odliczające z kolorową progresją (zielony → żółty → czerwony); pulsowanie w ostatnich 5 sekundach; `aria-live="assertive"` poniżej 5s
+  - **Scratchpad** — pole tekstowe na odpowiedź roboczą; automatyczne blokowanie po upływie czasu; dostosowanie wysokości na mobile (`visualViewport` API)
+  - **Wskaźnik postępu** — kompaktowy stepper lub dots indicator (1-10)
+- **UX / Dostępność / Bezpieczeństwo:**
+  - **Tryb Focus:** ciemne tło, ukryta nawigacja, brak menu bocznego — zero dystraktorów
+  - **Anti-cheat:** blokada zaznaczania tekstu (`user-select: none`), blokada menu kontekstowego (`oncontextmenu`) na treści pytania
+  - **beforeunload** guard: ostrzeżenie przed zamknięciem/odświeżeniem karty
+  - Automatyczny submit odpowiedzi po upływie timera (`timer_expired: true`)
+  - Brak przycisku pauzy
+  - `focus-trap` na scratchpadzie — klawiatura nie opuszcza aktywnego pytania
+  - Natychmiastowy `POST /api/rounds/:roundId/attempts` po każdym pytaniu
+- **Mapowanie API:** `GET /api/sessions/:sessionId/rounds/:position`, `POST /api/rounds/:roundId/attempts`
+- **Mapowanie US:** US-003, US-007
 
 ---
 
@@ -42,63 +66,193 @@ Najpierw przejrzyj następujące informacje:
 3. User Stories:
    <user_stories>
 
-### US-006: Analiza postępów
+### US-002: Generowanie sesji treningowej
 
-- ID: US-006
-- Tytuł: Przegląd historii i statystyk
-- Opis: Jako gracz chcę widzieć swoją skuteczność w poszczególnych kategoriach, aby wiedzieć, jakie obszary wiedzy wymagają dodatkowego doczytania.
+- ID: US-002
+- Tytuł: Tworzenie zestawu 40 pytań przez AI
+- Opis: Jako gracz chcę wygenerować pełny zestaw 40 trudnych pytań jednym kliknięciem, aby móc przejść przez pełny cykl turniejowy bez przerw na ładowanie danych.
 - Kryteria akceptacji:
 
-1. Dashboard wyświetla ogólny procent poprawnych odpowiedzi (na podstawie modelu samooceny).
-2. System prezentuje wykres lub listę skuteczności z podziałem na zdefiniowane kategorie tematyczne.
-3. Użytkownik widzi listę ostatnich 10 sesji treningowych z ich wynikami.
+1. System wysyła jeden prompt do modelu AI.
+2. AI zwraca 40 pytań podzielonych na 4 rundy.
+3. W każdej rundzie kategorie tematyczne są wymieszane.
+4. Podczas generowania widoczny jest ekran ładowania z ciekawostkami.
+5. Proces trwa nie dłużej niż 40 sekund.
+
+### US-003: Przebieg rundy pod presją
+
+- ID: US-003
+- Tytuł: Obsługa pytania z timerem
+- Opis: Jako gracz chcę, aby każde pytanie miało odliczany czas i pole scratchpadu, aby symulować stres związany z pisaniem odpowiedzi na kartce podczas turnieju.
+- Kryteria akceptacji:
+
+1. Po wyświetleniu pytania timer startuje automatycznie (domyślnie 20s).
+2. Użytkownik może wpisać tekst w scratchpad.
+3. Po upływie czasu pole edycji zostaje zablokowane.
+4. Brak przycisku pauzy na ekranie gry.
+5. Prawidłowa odpowiedź pozostaje ukryta do końca rundy.
+
+### US-007: Obsługa skrajnych przypadków (Przerwanie gry)
+
+- ID: US-007
+- Tytuł: Reakcja na odświeżenie strony
+- Opis: Jako twórca systemu chcę, aby odświeżenie strony unieważniało trwającą rundę, co zapobiega oszukiwaniu poprzez resetowanie timera.
+- Kryteria akceptacji:
+
+1. W trakcie aktywnej rundy nie jest zapisywany stan tymczasowy w LocalStorage/DB.
+2. Odświeżenie strony skutkuje powrotem do ekranu głównego (Dashboardu).
+3. Wyniki z niedokończonej rundy nie są wliczane do statystyk ogólnych.
 
    </user_stories>
 
 4. Endpoint Description:
    <endpoint_description>
 
-#### `GET /api/stats/overview`
+### 2.1 Generation Batches
 
-Overall user performance summary for dashboard (US-006).
+#### `POST /api/generation-batches`
+
+Trigger AI generation of a full quiz (40 questions / 4 rounds). Calls OpenRouter server-side. Implements the retry mechanism (max 2 attempts) on invalid JSON responses.
+
+**Request body:**
+
+```json
+{
+  "model": "gpt-4o",
+  "provider": "openrouter",
+  "prompt_version": "v1",
+  "requested_questions_count": 40
+}
+```
+
+**Response `201`:**
+
+```json
+{
+  "id": "uuid",
+  "status": "pending",
+  "model": "gpt-4o",
+  "provider": "openrouter",
+  "prompt_version": "v1",
+  "requested_questions_count": 40,
+  "returned_questions_count": 0,
+  "retry_count": 0,
+  "estimated_cost_usd": null,
+  "created_at": "2026-03-21T10:00:00Z"
+}
+```
+
+**Response `202`** (returned when status becomes `success` after synchronous inline wait, includes created question IDs grouped by round):
+
+```json
+{
+  "id": "uuid",
+  "status": "success",
+  "returned_questions_count": 40,
+  "retry_count": 0,
+  "estimated_cost_usd": 0.012345,
+  "finished_at": "2026-03-21T10:00:28Z",
+  "rounds": [
+    { "position": 1, "question_ids": ["uuid", "..."] },
+    { "position": 2, "question_ids": ["uuid", "..."] },
+    { "position": 3, "question_ids": ["uuid", "..."] },
+    { "position": 4, "question_ids": ["uuid", "..."] }
+  ]
+}
+```
+
+**Errors:**
+
+- `400 Bad Request` — invalid model or prompt version
+- `422 Unprocessable Entity` — AI returned malformed JSON after max retries
+- `429 Too Many Requests` — rate limit exceeded for generation endpoint
+- `502 Bad Gateway` — upstream OpenRouter API error
+
+---
+
+#### `GET /api/generation-batches/:id`
+
+Poll status of a generation batch.
 
 **Response `200`:**
 
 ```json
 {
-  "total_attempts": 1240,
-  "knew_count": 867,
-  "did_not_know_count": 373,
-  "overall_accuracy_percent": 69.9,
-  "total_sessions_completed": 31,
-  "flagged_questions_pending": 4
+  "id": "uuid",
+  "status": "success | pending | failed",
+  "returned_questions_count": 40,
+  "retry_count": 1,
+  "estimated_cost_usd": 0.012345,
+  "error_message": null,
+  "finished_at": "2026-03-21T10:00:28Z"
+}
+```
+
+**Errors:**
+
+- `404 Not Found` — batch not found or belongs to another user
+
+---
+
+#### `GET /api/generation-batches`
+
+List user's generation batches.
+
+**Query params:** `page`, `limit`, `status` (`pending | success | failed`)
+
+**Response `200`:**
+
+```json
+{
+  "data": [ { ...batch } ],
+  "pagination": { "page": 1, "limit": 20, "total": 7 }
 }
 ```
 
 ---
 
-#### `GET /api/stats/categories`
+#### `POST /api/sessions`
 
-Per-category effectiveness breakdown (US-006).
+Start a new training session linked to a successfully completed generation batch.
 
-**Query params:** `from` (date, default 30 days ago), `to` (date, default today)
-
-**Response `200`:**
+**Request body:**
 
 ```json
 {
-  "data": [
-    {
-      "category_id": "uuid",
-      "category_name": "Ekstraklasa",
-      "attempts_count": 320,
-      "knew_count": 210,
-      "did_not_know_count": 110,
-      "accuracy_percent": 65.6
-    }
+  "generation_batch_id": "uuid",
+  "timer_seconds": 20
+}
+```
+
+**Response `201`:**
+
+```json
+{
+  "id": "uuid",
+  "status": "in_progress",
+  "generation_batch_id": "uuid",
+  "timer_seconds": 20,
+  "total_rounds": 4,
+  "questions_per_round": 10,
+  "started_at": "2026-03-21T10:00:00Z",
+  "rounds": [
+    { "id": "uuid", "position": 1, "status": "in_progress" },
+    { "id": "uuid", "position": 2, "status": "in_progress" },
+    { "id": "uuid", "position": 3, "status": "in_progress" },
+    { "id": "uuid", "position": 4, "status": "in_progress" }
   ]
 }
 ```
+
+**Errors:**
+
+- `400 Bad Request` — `timer_seconds` out of [15, 30] range
+- `404 Not Found` — batch not found
+- `422 Unprocessable Entity` — batch status is not `success`
+
+> **Note:** Server-side trigger automatically sets any existing `in_progress` sessions for the user to `abandoned` before inserting the new session.
+
+---
 
 #### `GET /api/sessions`
 
@@ -130,6 +284,18 @@ List past sessions for dashboard (US-006).
   "pagination": { "page": 1, "limit": 10, "total": 23 }
 }
 ```
+
+---
+
+#### `GET /api/sessions/:id`
+
+Get a session with round summaries.
+
+**Response `200`:** Full session object including round statuses and score summary
+
+**Errors:**
+
+- `404 Not Found`
 
 ---
 

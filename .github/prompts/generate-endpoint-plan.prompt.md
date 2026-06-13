@@ -4,28 +4,69 @@ Zanim zaczniemy, zapoznaj się z poniższymi informacjami:
 
 1. Route API specification:
    <route_api_specification>
-   {{SPEC}}
-   </route_api_specification>
+
+#### `GET /api/generation-batches/:id`
+
+Poll status of a generation batch.
+
+**Response `200`:**
+
+```json
+{
+  "id": "uuid",
+  "status": "success | pending | failed",
+  "returned_questions_count": 40,
+  "retry_count": 1,
+  "estimated_cost_usd": 0.012345,
+  "error_message": null,
+  "finished_at": "2026-03-21T10:00:28Z"
+}
+```
+
+**Errors:**
+
+- `404 Not Found` — batch not found or belongs to another user
+
+---
+
+#### `GET /api/generation-batches`
+
+List user's generation batches.
+
+**Query params:** `page`, `limit`, `status` (`pending | success | failed`)
+
+**Response `200`:**
+
+```json
+{
+  "data": [ { ...batch } ],
+  "pagination": { "page": 1, "limit": 20, "total": 7 }
+}
+```
+
+---
+
+</route_api_specification>
 
 2. Related database resources:
    <related_db_resources>
-   #file:database.types.ts
+   #file:../../src/components/../db/database.types.ts
    </related_db_resources>
 
 3. Definicje typów:
    <type_definitions>
-   #file:types.ts
+   #file:../../src/types.ts
    </type_definitions>
 
 4. Tech stack:
    <tech_stack>
-   #file:tech-stack.md
+   #file:../../.ai/tech-stack.md
    </tech_stack>
 
 5. Implementation rules:
    <implementation_rules>
-   #file:backend-supabase.instructions.md
-   #file:astro-guidelines.instructions.md
+   #file:../instructions/backend-supabase.instructions.md
+   #file:../instructions/astro-guidelines.instructions.md
    </implementation_rules>
 
 Twoim zadaniem jest stworzenie kompleksowego planu wdrożenia endpointu interfejsu API REST. Przed dostarczeniem ostatecznego planu użyj znaczników <analysis>, aby przeanalizować informacje i nakreślić swoje podejście. W tej analizie upewnij się, że:

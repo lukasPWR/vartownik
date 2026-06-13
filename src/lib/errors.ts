@@ -48,3 +48,35 @@ export class NotFoundError extends Error {
     this.name = "NotFoundError";
   }
 }
+
+/** Generation batch does not exist or belongs to a different user. */
+export class BatchNotFoundError extends Error {
+  constructor(message = "Generation batch not found.") {
+    super(message);
+    this.name = "BatchNotFoundError";
+  }
+}
+
+/** Generation batch exists but its status is not "success". */
+export class BatchNotSuccessError extends Error {
+  constructor(message = "Generation batch is not completed successfully.") {
+    super(message);
+    this.name = "BatchNotSuccessError";
+  }
+}
+
+/** Request is syntactically valid but violates business rules (e.g. invalid state transition). */
+export class BadRequestError extends Error {
+  constructor(message = "Bad request.") {
+    super(message);
+    this.name = "BadRequestError";
+  }
+}
+
+/** Request payload or referenced data is structurally invalid for the requested operation. */
+export class UnprocessableEntityError extends Error {
+  constructor(message = "Unprocessable entity.") {
+    super(message);
+    this.name = "UnprocessableEntityError";
+  }
+}

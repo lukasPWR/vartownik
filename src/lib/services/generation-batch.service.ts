@@ -1,12 +1,18 @@
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import type { SupabaseClientType } from "@/db/supabase.client";
-import { callOpenRouter } from "@/lib/openrouter.client";
 import { callGoogle } from "@/lib/google.client";
 import { buildPrompt } from "@/lib/prompts/quiz-generation.v1";
-import { AiParseError, OpenRouterError, RateLimitError } from "@/lib/errors";
-import type { CreateGenerationBatchCommand, GenerationBatchSuccessDTO, RoundQuestionGroupDTO } from "@/types";
+import { AiParseError, NotFoundError, OpenRouterError, RateLimitError } from "@/lib/errors";
+import type {
+  CreateGenerationBatchCommand,
+  GenerationBatchDTO,
+  GenerationBatchStatusDTO,
+  GenerationBatchSuccessDTO,
+  ListGenerationBatchesResponseDTO,
+  RoundQuestionGroupDTO,
+} from "@/types";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -16,6 +22,9 @@ const RATE_LIMIT_MAX = 100;
 const RATE_LIMIT_WINDOW_MINUTES = 60;
 const MAX_RETRIES = 2;
 const QUESTIONS_PER_ROUND = 10;
+const MAX_GENERATION_CHUNK_SIZE = 10;
+const RETRYABLE_PROVIDER_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+const RETRY_BASE_DELAY_MS = 1_000;
 
 // ---------------------------------------------------------------------------
 // Zod schemas for AI response validation
@@ -34,6 +43,33 @@ const AiQuestionSchema = z.object({
 const AiResponseSchema = z.array(AiQuestionSchema);
 
 type AiQuestion = z.infer<typeof AiQuestionSchema>;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function isRetryableProviderError(error: OpenRouterError): boolean {
+  return error.statusCode !== undefined && RETRYABLE_PROVIDER_STATUS_CODES.has(error.statusCode);
+}
+
+function getRetryDelayMs(attempt: number): number {
+  return RETRY_BASE_DELAY_MS * 2 ** attempt;
+}
+
+function splitIntoGenerationChunks(totalCount: number, chunkSize: number): number[] {
+  const chunks: number[] = [];
+  let remaining = totalCount;
+
+  while (remaining > 0) {
+    const currentChunkSize = Math.min(chunkSize, remaining);
+    chunks.push(currentChunkSize);
+    remaining -= currentChunkSize;
+  }
+
+  return chunks;
+}
 
 // ---------------------------------------------------------------------------
 // Rate limiting
@@ -141,7 +177,7 @@ async function finalizeBatch(
 }
 
 // ---------------------------------------------------------------------------
-// OpenRouter call with retry
+// Google AI call with retry
 // ---------------------------------------------------------------------------
 
 /**
@@ -150,7 +186,6 @@ async function finalizeBatch(
  * Throws `AiParseError` after exhausting all attempts.
  */
 async function callAiWithRetry(
-  provider: string,
   model: string,
   promptVersion: string,
   count: number
@@ -169,14 +204,15 @@ async function callAiWithRetry(
     }
 
     try {
-      const { content, estimatedCostUsd } =
-        provider === "google" ? await callGoogle(model, messages) : await callOpenRouter(model, messages);
+      const { content, estimatedCostUsd } = await callGoogle(model, messages);
 
       // Strip optional markdown code fences the model may add despite instructions
       const cleaned = content
         .trim()
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/i, "");
+
+      console.log(`[generation-batch] Raw AI response (first 500 chars):`, content.substring(0, 500));
 
       const parsed: unknown = JSON.parse(cleaned);
       const validated = AiResponseSchema.parse(parsed);
@@ -189,10 +225,14 @@ async function callAiWithRetry(
 
       return { questions: validated, estimatedCostUsd, retryCount };
     } catch (error) {
-      // Provider HTTP errors (4xx/5xx) should not be retried — rethrow immediately
-      if (error instanceof OpenRouterError) {
+      if (error instanceof OpenRouterError && !isRetryableProviderError(error)) {
         throw error;
       }
+
+      if (attempt < MAX_RETRIES) {
+        await delay(getRetryDelayMs(attempt));
+      }
+
       lastError = error instanceof Error ? error : new Error(String(error));
       console.error(`[generation-batch] Attempt ${attempt + 1} failed`, { model, error: lastError.message });
     }
@@ -360,12 +400,26 @@ export async function createGenerationBatch(
   let retryCount: number;
 
   try {
-    ({ questions, estimatedCostUsd, retryCount } = await callAiWithRetry(
-      command.provider,
-      command.model,
-      command.prompt_version,
-      command.requested_questions_count
-    ));
+    const chunkSizes = splitIntoGenerationChunks(command.requested_questions_count, MAX_GENERATION_CHUNK_SIZE);
+    const generatedQuestions: AiQuestion[] = [];
+    let totalEstimatedCostUsd = 0;
+    let totalHasEstimatedCost = false;
+    let highestRetryCount = 0;
+
+    for (const chunkSize of chunkSizes) {
+      const chunkResult = await callAiWithRetry(command.model, command.prompt_version, chunkSize);
+      generatedQuestions.push(...chunkResult.questions);
+      highestRetryCount = Math.max(highestRetryCount, chunkResult.retryCount);
+
+      if (chunkResult.estimatedCostUsd !== null) {
+        totalHasEstimatedCost = true;
+        totalEstimatedCostUsd += chunkResult.estimatedCostUsd;
+      }
+    }
+
+    questions = generatedQuestions;
+    estimatedCostUsd = totalHasEstimatedCost ? parseFloat(totalEstimatedCostUsd.toFixed(6)) : null;
+    retryCount = highestRetryCount;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await finalizeBatch(batchId, { success: false, errorMessage: message, retryCount: MAX_RETRIES }, supabase);
@@ -403,5 +457,96 @@ export async function createGenerationBatch(
     estimated_cost_usd: estimatedCostUsd,
     finished_at: finishedAt,
     rounds,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Get batch by ID (status poll)
+// ---------------------------------------------------------------------------
+
+/**
+ * Retrieves the status fields of a single generation batch owned by `userId`.
+ * Throws `NotFoundError` when the batch does not exist or belongs to another user.
+ */
+export async function getGenerationBatchById(
+  supabase: SupabaseClientType,
+  id: string,
+  userId: string
+): Promise<GenerationBatchStatusDTO> {
+  const { data, error } = await supabase
+    .from("generation_batches")
+    .select("id, status, returned_questions_count, retry_count, estimated_cost_usd, error_message, finished_at")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .single();
+
+  if (error) {
+    // PGRST116 = no rows returned by .single()
+    if (error.code === "PGRST116") {
+      throw new NotFoundError("Generation batch not found");
+    }
+    console.error("[generation-batch] getGenerationBatchById failed", { id, userId, error });
+    throw error;
+  }
+
+  if (!data) {
+    throw new NotFoundError("Generation batch not found");
+  }
+
+  return data;
+}
+
+// ---------------------------------------------------------------------------
+// List generation batches (paginated)
+// ---------------------------------------------------------------------------
+
+/** Zod schema for query params of GET /api/generation-batches. */
+export const ListGenerationBatchesQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(["pending", "success", "failed"]).optional(),
+});
+
+export type ListGenerationBatchesQuery = z.infer<typeof ListGenerationBatchesQuerySchema>;
+
+/**
+ * Returns a paginated list of generation batches owned by `userId`.
+ * Applies optional `status` filter and orders by `created_at DESC`.
+ */
+export async function listGenerationBatches(
+  supabase: SupabaseClientType,
+  query: ListGenerationBatchesQuery,
+  userId: string
+): Promise<ListGenerationBatchesResponseDTO> {
+  const offset = (query.page - 1) * query.limit;
+
+  let dbQuery = supabase
+    .from("generation_batches")
+    .select(
+      "id, status, model, provider, prompt_version, requested_questions_count, returned_questions_count, retry_count, estimated_cost_usd, error_message, finished_at, created_at",
+      { count: "exact" }
+    )
+    .eq("user_id", userId);
+
+  if (query.status !== undefined) {
+    dbQuery = dbQuery.eq("status", query.status);
+  }
+
+  const { data, error, count } = await dbQuery
+    .order("created_at", { ascending: false })
+    .range(offset, offset + query.limit - 1);
+
+  if (error) {
+    console.error("[generation-batch] listGenerationBatches failed", { userId, query, error });
+    throw new Error("Failed to list generation batches");
+  }
+
+  return {
+    data: (data ?? []) as GenerationBatchDTO[],
+    pagination: {
+      page: query.page,
+      limit: query.limit,
+      total: count ?? 0,
+    },
   };
 }

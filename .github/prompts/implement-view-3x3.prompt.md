@@ -3,7 +3,7 @@ Twoim zadaniem jest zaimplementowanie widoku frontendu w oparciu o podany plan i
 Najpierw przejrzyj plan implementacji:
 
 <implementation_plan>
-#file:../../.ai/dashboard/dashboard-view-implementation-plan.md
+#file:../../.ai/game/game-view-implementation-plan.md
 </implementation_plan>
 
 Teraz przejrzyj zasady implementacji:

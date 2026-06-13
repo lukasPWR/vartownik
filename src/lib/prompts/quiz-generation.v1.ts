@@ -1,4 +1,7 @@
-import type { OpenRouterMessage } from "@/lib/openrouter.client";
+export interface AiMessage {
+  role: "system" | "user" | "assistant";
+  content: string;
+}
 
 /**
  * Builds the system + user messages for quiz question generation (prompt version v1).
@@ -18,7 +21,7 @@ import type { OpenRouterMessage } from "@/lib/openrouter.client";
  * Category slugs must be one of:
  *   historia | trofea | zawodnicy | trenerzy | stadiony | zasady | rekordy | transfery
  */
-export function buildPrompt(count: number): OpenRouterMessage[] {
+export function buildPrompt(count: number): AiMessage[] {
   const systemPrompt = `### ROLA
 Jesteś ekspertem historii piłki nożnej i autorem pytań do najbardziej prestiżowych quizów piłkarskich w Polsce (np. PilkarskiQuiz.pl). Twoim zadaniem jest generowanie pytań o wysokim stopniu trudności, które wymagają konkretnej wiedzy historycznej, statystycznej lub analitycznej.
 

@@ -4,8 +4,10 @@
   "version": "0.0.1",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "astro check && astro build",
     "preview": "astro preview",
+    "deploy:cf": "wrangler deploy",
+    "deploy:cf:staging": "wrangler deploy --env staging",
     "astro": "astro",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -15,7 +17,7 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.7",
-    "@astrojs/node": "^9.4.3",
+    "@astrojs/cloudflare": "^12.6.13",
     "@astrojs/sitemap": "^3.5.1",
     "@astrojs/vue": "^5.1.4",
     "@nanostores/vue": "^1.1.0",
@@ -24,7 +26,7 @@
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/vue-table": "^8.21.3",
     "@vueuse/core": "^14.3.0",
-    "astro": "^5.13.7",
+    "astro": "^5.18.1",
     "chart.js": "^4.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -50,12 +52,14 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-vue": "^10.8.0",
+    "gh": "^2.8.9",
     "husky": "9.1.7",
     "lint-staged": "^16.3.3",
     "prettier-plugin-astro": "0.14.1",
     "supabase": "^2.23.4",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0"
+    "typescript-eslint": "^8.57.0",
+    "wrangler": "^4.98.0"
   },
   "lint-staged": {
     "*.{ts,vue,astro}": [

@@ -1,0 +1,14 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import GameView from "@/components/game/GameView.vue";
+
+if (!Astro.locals.user) {
+  return Astro.redirect("/auth/signin");
+}
+---
+
+<Layout title="Quiz – VARtownik">
+  <main class="min-h-screen bg-background">
+    <GameView client:only="vue" />
+  </main>
+</Layout>

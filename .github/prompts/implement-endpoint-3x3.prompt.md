@@ -7,11 +7,11 @@ Najpierw dokładnie przejrzyj dostarczony plan wdrożenia:
 </implementation_plan>
 
 <types>
-#file:types.ts 
+#file:../../src/types.ts
 </types>
 
 <implementation_rules>
-#file:tech-stack.md
+#file:../../.ai/tech-stack.md
 </implementation_rules>
 
 <implementation_approach>

@@ -1,6 +1,6 @@
 import { GOOGLE_API_KEY } from "astro:env/server";
 import { OpenRouterError } from "@/lib/errors";
-import type { OpenRouterMessage } from "@/lib/openrouter.client";
+import type { AiMessage } from "@/lib/prompts/quiz-generation.v1";
 
 const GOOGLE_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const REQUEST_TIMEOUT_MS = 60_000;
@@ -20,7 +20,7 @@ interface GeminiResponse {
       parts: GeminiPart[];
       role: string;
     };
-    finishReason: string;
+    finishReason?: string;
   }[];
   usageMetadata?: {
     promptTokenCount: number;
@@ -31,13 +31,13 @@ interface GeminiResponse {
 
 /**
  * Calls the Google Gemini generateContent API.
- * Accepts the same `OpenRouterMessage[]` format as callOpenRouter for interoperability.
+ * Accepts provider-neutral chat messages and maps them to Gemini's API shape.
  * Maps `system` role messages to Gemini's `systemInstruction` field.
  * Throws `OpenRouterError` on non-2xx responses or network failures.
  */
 export async function callGoogle(
   model: string,
-  messages: OpenRouterMessage[]
+  messages: AiMessage[]
 ): Promise<{ content: string; estimatedCostUsd: number | null }> {
   // Gemini separates system instruction from conversation turns
   const systemMessage = messages.find((m) => m.role === "system");
@@ -53,6 +53,7 @@ export async function callGoogle(
     generationConfig: {
       temperature: 0.7,
       maxOutputTokens: 8192,
+      responseMimeType: "application/json",
     },
   };
 
@@ -78,8 +79,14 @@ export async function callGoogle(
   }
 
   if (!response.ok) {
+    let errorBody = "";
+    try {
+      errorBody = await response.text();
+    } catch {
+      // ignore
+    }
     throw new OpenRouterError(
-      `Google Gemini returned HTTP ${response.status}: ${response.statusText}`,
+      `Google Gemini returned HTTP ${response.status}: ${response.statusText}${errorBody ? ` — ${errorBody}` : ""}`,
       response.status
     );
   }
@@ -91,9 +98,16 @@ export async function callGoogle(
     throw new OpenRouterError("Google Gemini returned a non-JSON response");
   }
 
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const candidate = data.candidates?.[0];
+  const content = candidate?.content?.parts?.[0]?.text;
   if (!content) {
     throw new OpenRouterError("Google Gemini response contained no text content");
+  }
+
+  if (candidate?.finishReason && candidate.finishReason !== "STOP") {
+    throw new OpenRouterError(
+      `Google Gemini stopped before completing the response (finishReason=${candidate.finishReason})`
+    );
   }
 
   const estimatedCostUsd = data.usageMetadata ? estimateGeminiCost(modelId, data.usageMetadata.totalTokenCount) : null;
@@ -105,6 +119,8 @@ function estimateGeminiCost(modelId: string, totalTokens: number): number {
   // Approximate blended cost per 1M tokens in USD
   const COST_PER_MILLION: Record<string, number> = {
     "gemini-2.5-pro": 3.5,
+    "gemini-2.5-flash": 0.3,
+    "gemini-2.5-flash-lite": 0.1,
     "gemini-2.0-flash": 0.15,
     "gemini-2.0-flash-lite": 0.075,
     "gemini-1.5-pro": 1.75,

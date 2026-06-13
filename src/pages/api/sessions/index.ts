@@ -1,7 +1,8 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
 
-import type { SessionListItemDTO, SessionsResponseDTO, ScoreSummaryDTO } from "@/types";
+import { createSession, listSessions } from "@/lib/services/sessions.service";
+import { BatchNotFoundError, BatchNotSuccessError, UnprocessableEntityError } from "@/lib/errors";
 
 export const prerender = false;
 
@@ -13,6 +14,11 @@ const QuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
   status: z.enum(["in_progress", "completed", "abandoned"]).optional(),
+});
+
+const CreateSessionSchema = z.object({
+  generation_batch_id: z.string().uuid(),
+  timer_seconds: z.number().int().min(15).max(30).default(20),
 });
 
 // ---------------------------------------------------------------------------
@@ -42,61 +48,9 @@ export const GET: APIRoute = async ({ locals, request }) => {
   }
 
   const { page, limit, status } = parsed.data;
-  const offset = (page - 1) * limit;
 
   try {
-    let query = locals.supabase
-      .from("sessions")
-      .select(
-        `id, status, timer_seconds, total_rounds, questions_per_round, started_at, completed_at,
-         rounds(attempts(verdict))`,
-        { count: "exact" }
-      )
-      .eq("user_id", userId)
-      .order("started_at", { ascending: false })
-      .range(offset, offset + limit - 1);
-
-    if (status) query = query.eq("status", status);
-
-    const { data, error, count } = await query;
-
-    if (error) throw error;
-
-    const items: SessionListItemDTO[] = (data ?? []).map((session) => {
-      // Flatten all attempts from all rounds
-      const allAttempts = (session.rounds as { attempts: { verdict: string | null }[] }[]).flatMap((r) => r.attempts);
-
-      const total_questions = allAttempts.length;
-      const knew_count = allAttempts.filter((a) => a.verdict === "knew").length;
-      const did_not_know_count = allAttempts.filter((a) => a.verdict === "did_not_know").length;
-      const scored = knew_count + did_not_know_count;
-
-      const score_summary: ScoreSummaryDTO | null =
-        total_questions > 0
-          ? {
-              total_questions,
-              knew_count,
-              did_not_know_count,
-              accuracy_percent: scored > 0 ? Math.round((knew_count / scored) * 1000) / 10 : 0,
-            }
-          : null;
-
-      return {
-        id: session.id,
-        status: session.status,
-        timer_seconds: session.timer_seconds,
-        total_rounds: session.total_rounds,
-        questions_per_round: session.questions_per_round,
-        started_at: session.started_at,
-        completed_at: session.completed_at,
-        score_summary,
-      };
-    });
-
-    const result: SessionsResponseDTO = {
-      data: items,
-      pagination: { page, limit, total: count ?? 0 },
-    };
+    const result = await listSessions(locals.supabase, userId, { page, limit, status });
 
     return new Response(JSON.stringify(result), {
       status: 200,
@@ -104,6 +58,74 @@ export const GET: APIRoute = async ({ locals, request }) => {
     });
   } catch (err) {
     console.error("[GET /api/sessions]", err);
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// POST /api/sessions — create a new training session
+// ---------------------------------------------------------------------------
+
+export const POST: APIRoute = async ({ locals, request }) => {
+  if (!locals.user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const userId = locals.user.id;
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const parsed = CreateSessionSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(
+      JSON.stringify({
+        error: "Validation failed",
+        issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  try {
+    const result = await createSession(parsed.data, userId, locals.supabase);
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    if (err instanceof BatchNotFoundError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (err instanceof BatchNotSuccessError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (err instanceof UnprocessableEntityError) {
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 422,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    console.error("[POST /api/sessions]", { userId, err });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
