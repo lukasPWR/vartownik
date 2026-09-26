@@ -11,6 +11,8 @@ interface Props {
   phase: GenerationPhase;
   hasError: boolean;
   errorType: GenerationErrorType | null;
+  errorCode: string | null;
+  errorDetail: string | null;
   elapsedSeconds: number;
 }
 
@@ -37,6 +39,8 @@ const emit = defineEmits<{
       <GenerationErrorMessage
         v-if="props.hasError && props.errorType"
         :error-type="props.errorType"
+        :error-code="props.errorCode"
+        :error-detail="props.errorDetail"
         @retry="emit('retry')"
         @cancel="emit('cancel')"
       />

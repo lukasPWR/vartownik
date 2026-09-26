@@ -62,6 +62,41 @@ describe("generation request client", () => {
     expect(requestKey(fetchStub.mock.calls[1] ?? [])).toBe(FIRST_KEY);
   });
 
+  it("reports a connection failure separately from an AI provider failure", async () => {
+    const fetchStub = vi.fn<GenerationFetch>().mockRejectedValue(new TypeError("Failed to fetch"));
+    const client = createGenerationRequestClient({ fetch: fetchStub, generateKey: () => FIRST_KEY });
+
+    await expect(client.start()).resolves.toMatchObject({
+      kind: "failure",
+      errorType: "transport",
+      code: "transport_failed",
+    });
+    expect(fetchStub).toHaveBeenCalledTimes(2);
+  });
+
+  it("calls browser timers with the global receiver before sending the request", async () => {
+    const fetchStub = vi.fn<GenerationFetch>().mockResolvedValue(response(202, SUCCESS));
+    const setTimeoutWithBrowserReceiver = vi.fn(function (this: unknown, callback: () => void, delay: number) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      return globalThis.setTimeout(callback, delay);
+    }) as unknown as typeof setTimeout;
+    const clearTimeoutWithBrowserReceiver = vi.fn(function (this: unknown, timeout: ReturnType<typeof setTimeout>) {
+      if (this !== globalThis) throw new TypeError("Illegal invocation");
+      globalThis.clearTimeout(timeout);
+    }) as unknown as typeof clearTimeout;
+    const client = createGenerationRequestClient({
+      fetch: fetchStub,
+      generateKey: () => FIRST_KEY,
+      setTimeout: setTimeoutWithBrowserReceiver,
+      clearTimeout: clearTimeoutWithBrowserReceiver,
+    });
+
+    await expect(client.start()).resolves.toMatchObject({ kind: "success" });
+    expect(fetchStub).toHaveBeenCalledOnce();
+    expect(setTimeoutWithBrowserReceiver).toHaveBeenCalledOnce();
+    expect(clearTimeoutWithBrowserReceiver).toHaveBeenCalledOnce();
+  });
+
   it("uses the current key for explicit replay and a new key for explicit retry", async () => {
     const fetchStub = vi
       .fn<GenerationFetch>()

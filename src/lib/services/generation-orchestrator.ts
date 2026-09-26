@@ -142,17 +142,13 @@ function snapshotAggregate(aggregate: GenerationExecutionAggregate): GenerationE
 
 function withAggregate(error: Error, aggregate: GenerationExecutionAggregate): GenerationExecutionError {
   Object.defineProperty(error, "aggregate", {
-    configurable: false,
+    configurable: true,
     enumerable: true,
     value: snapshotAggregate(aggregate),
     writable: false,
   });
 
   return error as GenerationExecutionError;
-}
-
-function hasAggregate(error: unknown): error is GenerationExecutionError {
-  return error instanceof Error && "aggregate" in error;
 }
 
 function assertUsage(usage: GenerationUsage): void {
@@ -332,18 +328,18 @@ export async function orchestrateGeneration(
     options.signal?.addEventListener("abort", handleCallerAbort, { once: true });
   }
 
-  const questions: GeneratedQuestion[] = [];
   const chunkCount = policy.requestedQuestionsCount / policy.chunkSize;
+  let reservedRetries = 0;
 
   try {
     if (batchController.signal.aborted) {
       throw lifecycleError(false, aggregate);
     }
 
-    for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex++) {
-      let shouldRetry = false;
-
+    async function generateChunk(): Promise<GeneratedQuestion[]> {
+      let retryReserved = false;
       while (true) {
+        if (retryReserved) reservedRetries -= 1;
         if (batchController.signal.aborted) {
           throw lifecycleError(clock.now() >= options.deadlineAt, aggregate);
         }
@@ -357,9 +353,7 @@ export async function orchestrateGeneration(
           throw withAggregate(new GenerationBudgetExceededError("Generation attempt budget exhausted."), aggregate);
         }
 
-        if (shouldRetry) {
-          aggregate.retryCount += 1;
-        }
+        if (retryReserved) aggregate.retryCount += 1;
         aggregate.attemptCount += 1;
 
         try {
@@ -396,10 +390,10 @@ export async function orchestrateGeneration(
             );
           }
 
-          questions.push(...parsed.data.questions);
-          break;
+          return parsed.data.questions;
         } catch (error) {
-          if (batchController.signal.aborted) {
+          if (batchController.signal.aborted || clock.now() >= options.deadlineAt) {
+            batchController.abort();
             throw lifecycleError(clock.now() >= options.deadlineAt, aggregate);
           }
 
@@ -408,38 +402,56 @@ export async function orchestrateGeneration(
             throw withAggregate(executionError, aggregate);
           }
 
-          if (aggregate.retryCount >= policy.maxRetries) {
+          if (aggregate.retryCount + reservedRetries >= policy.maxRetries) {
             throw withAggregate(executionError, aggregate);
           }
 
-          if (aggregate.attemptCount >= policy.maxAttempts) {
+          if (aggregate.attemptCount + reservedRetries >= policy.maxAttempts) {
             throw withAggregate(
               new GenerationBudgetExceededError("Generation attempt budget prevented another retry."),
               aggregate
             );
           }
 
-          await waitForBackoff(
-            retryDelayMs(aggregate.retryCount),
-            options.deadlineAt,
-            clock,
-            batchController,
-            aggregate
-          );
-          shouldRetry = true;
+          reservedRetries += 1;
+          try {
+            await waitForBackoff(
+              retryDelayMs(aggregate.retryCount + reservedRetries - 1),
+              options.deadlineAt,
+              clock,
+              batchController,
+              aggregate
+            );
+          } catch (backoffError) {
+            reservedRetries -= 1;
+            throw backoffError;
+          }
+          retryReserved = true;
         }
       }
     }
 
+    if (chunkCount > policy.maxAttempts) {
+      throw new GenerationBudgetExceededError("Generation needs more initial attempts than the policy allows.");
+    }
+
+    let firstFailure: Error | null = null;
+    const tasks = Array.from({ length: chunkCount }, () =>
+      generateChunk().catch((error: unknown) => {
+        if (!firstFailure) firstFailure = toError(error);
+        batchController.abort();
+        throw error;
+      })
+    );
+    const outcomes = await Promise.allSettled(tasks);
+    if (firstFailure) throw firstFailure;
+
     return {
-      questions,
+      questions: outcomes.flatMap((outcome) => (outcome.status === "fulfilled" ? outcome.value : [])),
       aggregate: snapshotAggregate(aggregate),
       preflightCostCeilingUsd: policy.preflightCostCeilingUsd,
     };
   } catch (error) {
-    if (hasAggregate(error)) {
-      throw error;
-    }
     throw withAggregate(toError(error), aggregate);
   } finally {
     options.signal?.removeEventListener("abort", handleCallerAbort);

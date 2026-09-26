@@ -5,6 +5,8 @@ import type { GenerationErrorType } from "@/lib/generation-request.client";
 
 interface Props {
   errorType: GenerationErrorType;
+  errorCode: string | null;
+  errorDetail: string | null;
 }
 
 const props = defineProps<Props>();
@@ -38,6 +40,10 @@ const MESSAGES: Record<GenerationErrorType, { title: string; description: string
     title: "Przekroczono limit",
     description: "Przekroczono limit generowania. Spróbuj ponownie za chwilę.",
   },
+  transport: {
+    title: "Brak połączenia z serwerem",
+    description: "Nie udało się połączyć z aplikacją. Sprawdź, czy serwer działa, i spróbuj ponownie.",
+  },
   provider: {
     title: "Usługa AI niedostępna",
     description: "Usługa AI jest chwilowo niedostępna. Spróbuj ponownie.",
@@ -62,6 +68,7 @@ const retryCooldown = ref(0);
 let cooldownTimer: ReturnType<typeof setInterval> | null = null;
 
 const message = computed(() => MESSAGES[props.errorType]);
+const showDiagnosticCode = import.meta.env.DEV;
 
 function handleRetry(): void {
   if (isRateLimit.value) {
@@ -92,6 +99,12 @@ onUnmounted(() => {
   <div role="alert" class="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-left">
     <p class="font-semibold text-destructive">{{ message.title }}</p>
     <p class="mt-1 text-sm text-muted-foreground">{{ message.description }}</p>
+    <p v-if="showDiagnosticCode && props.errorCode" class="mt-2 text-xs text-muted-foreground">
+      Kod diagnostyczny: {{ props.errorCode }}
+    </p>
+    <p v-if="showDiagnosticCode && props.errorDetail" class="mt-1 break-words text-xs text-muted-foreground">
+      Szczegóły: {{ props.errorDetail }}
+    </p>
 
     <div class="mt-4 flex flex-wrap gap-2">
       <Button :disabled="retryDisabled" @click="handleRetry">
