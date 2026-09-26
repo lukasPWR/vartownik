@@ -4,6 +4,7 @@ import { z } from "zod";
 import { ConflictError, NotFoundError } from "@/lib/errors";
 import { deleteQuestion, getQuestionById, updateQuestion } from "@/lib/services/questions.service";
 import type { UpdateQuestionCommand } from "@/types";
+import { QuestionStatusSchema } from "@/lib/question-status";
 
 export const prerender = false;
 
@@ -20,21 +21,18 @@ const UpdateQuestionBodySchema = z.object({
     })
     .optional(),
   difficulty_score: z.number().int().min(1).max(5).optional(),
-  status: z.enum(["active", "flagged", "needs_review", "verified", "archived"]).optional(),
+  status: QuestionStatusSchema.optional(),
   category_ids: z.array(z.string().uuid()).optional(),
   tag_ids: z.array(z.string().uuid()).optional(),
   change_reason: z.string().min(1).max(500),
 });
 
 export const GET: APIRoute = async ({ locals, params }) => {
-  //   if (!locals.user) {
-  //     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //       status: 401,
-  //       headers: { "Content-Type": "application/json" },
-  //     });
-  //   }
-
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
+  if (!locals.user)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
 
   const parsed = ParamsSchema.safeParse(params);
   if (!parsed.success) {
@@ -48,7 +46,7 @@ export const GET: APIRoute = async ({ locals, params }) => {
   }
 
   try {
-    const result = await getQuestionById(locals.supabase, TEST_USER_ID, parsed.data.id);
+    const result = await getQuestionById(locals.supabase, locals.user.id, parsed.data.id);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -61,7 +59,7 @@ export const GET: APIRoute = async ({ locals, params }) => {
       });
     }
     console.error("[GET /api/questions/:id] Unexpected error", {
-      userId: TEST_USER_ID,
+      userId: locals.user.id,
       id: parsed.data.id,
       err,
     });
@@ -73,14 +71,11 @@ export const GET: APIRoute = async ({ locals, params }) => {
 };
 
 export const PATCH: APIRoute = async ({ locals, params, request }) => {
-  //   if (!locals.user) {
-  //     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //       status: 401,
-  //       headers: { "Content-Type": "application/json" },
-  //     });
-  //   }
-
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
+  if (!locals.user)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
 
   const parsedParams = ParamsSchema.safeParse(params);
   if (!parsedParams.success) {
@@ -118,12 +113,17 @@ export const PATCH: APIRoute = async ({ locals, params, request }) => {
   const command = parsedBody.data as UpdateQuestionCommand;
 
   try {
-    const result = await updateQuestion(locals.supabase, TEST_USER_ID, id, command);
+    const result = await updateQuestion(locals.supabase, locals.user.id, id, command);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
+    if (err instanceof ConflictError)
+      return new Response(JSON.stringify({ error: err.message }), {
+        status: 409,
+        headers: { "Content-Type": "application/json" },
+      });
     if (err instanceof NotFoundError) {
       return new Response(JSON.stringify({ error: err.message }), {
         status: 404,
@@ -146,7 +146,7 @@ export const PATCH: APIRoute = async ({ locals, params, request }) => {
       }
     }
     console.error("[PATCH /api/questions/:id] Unexpected error", {
-      userId: TEST_USER_ID,
+      userId: locals.user.id,
       id,
       err,
     });
@@ -158,14 +158,11 @@ export const PATCH: APIRoute = async ({ locals, params, request }) => {
 };
 
 export const DELETE: APIRoute = async ({ locals, params }) => {
-  //   if (!locals.user) {
-  //     return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //       status: 401,
-  //       headers: { "Content-Type": "application/json" },
-  //     });
-  //   }
-
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
+  if (!locals.user)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
 
   const parsed = ParamsSchema.safeParse(params);
   if (!parsed.success) {
@@ -179,7 +176,7 @@ export const DELETE: APIRoute = async ({ locals, params }) => {
   }
 
   try {
-    await deleteQuestion(locals.supabase, TEST_USER_ID, parsed.data.id);
+    await deleteQuestion(locals.supabase, locals.user.id, parsed.data.id);
     return new Response(null, { status: 204 });
   } catch (err) {
     if (err instanceof NotFoundError) {
@@ -195,7 +192,7 @@ export const DELETE: APIRoute = async ({ locals, params }) => {
       });
     }
     console.error("[DELETE /api/questions/:id] Unexpected error", {
-      userId: TEST_USER_ID,
+      userId: locals.user.id,
       id: parsed.data.id,
       err,
     });

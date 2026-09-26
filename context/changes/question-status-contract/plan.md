@@ -191,8 +191,8 @@ Migracja danych jest jednokierunkowa: `needs_review` staje się `flagged`, bez u
 
 #### Automated
 
-- [x] 1.1 Test SQL migracji aliasu i ochrony przed nowym `needs_review`
-- [x] 1.2 Test SQL przejść, znaczników czasu, ponownego flagowania i izolacji właściciela
+- [x] 1.1 Test SQL migracji aliasu i ochrony przed nowym `needs_review` — a104e29
+- [x] 1.2 Test SQL przejść, znaczników czasu, ponownego flagowania i izolacji właściciela — a104e29
 
 #### Manual
 
@@ -202,9 +202,9 @@ Migracja danych jest jednokierunkowa: `needs_review` staje się `flagged`, bez u
 
 #### Automated
 
-- [ ] 2.1 Test serwisu i API dla przejść, uwierzytelnienia i mapowania błędów
-- [ ] 2.2 Test bazy blokady nowej sesji dla wykluczonych pytań
-- [ ] 2.3 Uruchomić `npm test`, `npm run lint` i `npm run build`
+- [x] 2.1 Test serwisu i API dla przejść, uwierzytelnienia i mapowania błędów
+- [x] 2.2 Test bazy blokady nowej sesji dla wykluczonych pytań
+- [x] 2.3 Uruchomić `npm test`, `npm run lint` i `npm run build`
 
 #### Manual
 
