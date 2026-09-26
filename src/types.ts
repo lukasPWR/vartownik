@@ -155,8 +155,12 @@ export type GenerationBatchDTO = Pick<
   | "prompt_version"
   | "requested_questions_count"
   | "returned_questions_count"
+  | "provider_attempt_count"
   | "retry_count"
+  | "input_tokens"
+  | "output_tokens"
   | "estimated_cost_usd"
+  | "failure_code"
   | "error_message"
   | "finished_at"
   | "created_at"
@@ -184,23 +188,26 @@ export interface RoundQuestionGroupDTO {
  */
 export interface GenerationBatchSuccessDTO extends Pick<
   Tables<"generation_batches">,
-  "id" | "status" | "returned_questions_count" | "retry_count" | "estimated_cost_usd" | "finished_at"
+  | "id"
+  | "status"
+  | "returned_questions_count"
+  | "provider_attempt_count"
+  | "retry_count"
+  | "input_tokens"
+  | "output_tokens"
+  | "estimated_cost_usd"
+  | "failure_code"
+  | "finished_at"
 > {
   rounds: RoundQuestionGroupDTO[];
 }
 
 /** POST /api/generation-batches request body. */
 export interface CreateGenerationBatchCommand {
-  model: string;
-  provider: string;
-  prompt_version: string;
-  requested_questions_count: number;
-}
-
-/** GET /api/generation-batches response envelope. */
-export interface ListGenerationBatchesResponseDTO {
-  data: GenerationBatchDTO[];
-  pagination: PaginationDTO;
+  model: "gpt-6-luna";
+  provider: "openai";
+  prompt_version: "v1";
+  requested_questions_count: 40;
 }
 
 /** GET /api/generation-batches response envelope. */
@@ -215,7 +222,17 @@ export interface ListGenerationBatchesResponseDTO {
  */
 export type GenerationBatchStatusDTO = Pick<
   Tables<"generation_batches">,
-  "id" | "status" | "returned_questions_count" | "retry_count" | "estimated_cost_usd" | "error_message" | "finished_at"
+  | "id"
+  | "status"
+  | "returned_questions_count"
+  | "provider_attempt_count"
+  | "retry_count"
+  | "input_tokens"
+  | "output_tokens"
+  | "estimated_cost_usd"
+  | "failure_code"
+  | "error_message"
+  | "finished_at"
 >;
 
 // ---------------------------------------------------------------------------

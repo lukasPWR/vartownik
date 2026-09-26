@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, onUnmounted } from "vue";
 import { Button } from "@/components/ui/button";
-
-type GenerationErrorType = "unprocessable" | "rate_limit" | "upstream" | "unknown";
+import type { GenerationErrorType } from "@/lib/generation-request.client";
 
 interface Props {
   errorType: GenerationErrorType;
@@ -15,17 +14,41 @@ const emit = defineEmits<{
 }>();
 
 const MESSAGES: Record<GenerationErrorType, { title: string; description: string }> = {
-  unprocessable: {
-    title: "Problem z generowaniem pytań",
-    description: "Wystąpił problem z generowaniem pytań przez AI. Spróbuj ponownie.",
+  admission: {
+    title: "Nieprawidłowe zlecenie",
+    description: "Ustawienia generowania nie spełniają wymagań. Odśwież stronę i spróbuj ponownie.",
+  },
+  conflict: {
+    title: "Generowanie już trwa",
+    description: "Inne generowanie jest już aktywne. Spróbuj ponownie za chwilę.",
+  },
+  budget: {
+    title: "Przekroczono budżet generowania",
+    description: "Nie można bezpiecznie rozpocząć generowania. Spróbuj ponownie później.",
+  },
+  deadline: {
+    title: "Generowanie trwało zbyt długo",
+    description: "Przekroczono limit czasu generowania pytań. Spróbuj ponownie.",
+  },
+  cancelled: {
+    title: "Generowanie anulowane",
+    description: "Generowanie zostało zakończone przed utworzeniem quizu.",
   },
   rate_limit: {
     title: "Przekroczono limit",
     description: "Przekroczono limit generowania. Spróbuj ponownie za chwilę.",
   },
-  upstream: {
+  provider: {
     title: "Usługa AI niedostępna",
     description: "Usługa AI jest chwilowo niedostępna. Spróbuj ponownie.",
+  },
+  parse: {
+    title: "Problem z generowaniem pytań",
+    description: "Usługa AI zwróciła niepoprawne pytania. Spróbuj ponownie.",
+  },
+  persistence: {
+    title: "Nie udało się zapisać quizu",
+    description: "Wygenerowane dane nie zostały bezpiecznie zapisane. Spróbuj ponownie.",
   },
   unknown: {
     title: "Nieznany błąd",
@@ -59,6 +82,10 @@ function handleRetry(): void {
 
   emit("retry");
 }
+
+onUnmounted(() => {
+  if (cooldownTimer !== null) clearInterval(cooldownTimer);
+});
 </script>
 
 <template>
