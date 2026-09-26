@@ -264,7 +264,7 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [x] 4.1 Uruchomić testy, lint, build i końcowy skan starego motywu
+- [x] 4.1 Uruchomić testy, lint, build i końcowy skan starego motywu — cec25a4
 
 #### Manual
 
