@@ -33,7 +33,7 @@ const labelColor: Record<PasswordStrength, string> = {
       <span
         v-for="i in 3"
         :key="i"
-        class="h-1 flex-1 rounded-full transition-colors duration-200"
+        class="h-1 flex-1 rounded-full motion-safe:transition-colors motion-safe:duration-200"
         :class="segmentColors(i - 1)"
         aria-hidden="true"
       />

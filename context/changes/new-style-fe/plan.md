@@ -253,7 +253,7 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [x] 3.1 Uruchomić lint i build oraz skan kolorów dashboardu i Chart.js
+- [x] 3.1 Uruchomić lint i build oraz skan kolorów dashboardu i Chart.js — 9d300ce
 
 #### Manual
 
@@ -264,7 +264,7 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [ ] 4.1 Uruchomić testy, lint, build i końcowy skan starego motywu
+- [x] 4.1 Uruchomić testy, lint, build i końcowy skan starego motywu
 
 #### Manual
 

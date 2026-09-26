@@ -25,18 +25,18 @@ const { remaining, isExpired, start } = useGameTimer(Math.min(30, Math.max(15, p
 const progress = computed(() => remaining.value / props.totalSeconds);
 
 const colorClass = computed(() => {
-  if (progress.value > 0.5) return "text-green-600 dark:text-green-400";
-  if (progress.value > 0.25) return "text-yellow-600 dark:text-yellow-400";
-  return "text-red-600 dark:text-red-400";
+  if (progress.value > 0.5) return "text-success";
+  if (progress.value > 0.25) return "text-warning";
+  return "text-destructive";
 });
 
 const strokeColor = computed(() => {
-  if (progress.value > 0.5) return "stroke-green-500";
-  if (progress.value > 0.25) return "stroke-yellow-500";
-  return "stroke-red-500";
+  if (progress.value > 0.5) return "stroke-success";
+  if (progress.value > 0.25) return "stroke-warning";
+  return "stroke-destructive";
 });
 
-const pulseClass = computed(() => (remaining.value <= 5 && !isExpired.value ? "animate-pulse" : ""));
+const pulseClass = computed(() => (remaining.value <= 5 && !isExpired.value ? "motion-safe:animate-pulse" : ""));
 
 // SVG circle
 const RADIUS = 36;
@@ -54,7 +54,7 @@ onMounted(() => {
       <span v-if="remaining <= 5">{{ remaining }} sekund</span>
     </div>
 
-    <div :class="['relative h-20 w-20', pulseClass]">
+    <div :class="['relative h-20 w-20 rounded-full bg-card', pulseClass]">
       <svg class="h-full w-full -rotate-90" viewBox="0 0 80 80" aria-hidden="true">
         <circle cx="40" cy="40" :r="RADIUS" fill="none" stroke-width="6" class="stroke-muted" />
         <circle
@@ -66,7 +66,7 @@ onMounted(() => {
           :stroke-dasharray="CIRCUMFERENCE"
           :stroke-dashoffset="dashoffset"
           stroke-linecap="round"
-          :class="[strokeColor, 'transition-all duration-1000']"
+          :class="[strokeColor, 'motion-safe:transition-all motion-safe:duration-1000']"
         />
       </svg>
 

@@ -38,7 +38,9 @@ onUnmounted(() => {
 
 <template>
   <div class="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-    <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ciekawostka</p>
+    <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      Ciekawostka {{ currentIndex + 1 }} z {{ FACTS.length }}
+    </p>
 
     <Transition name="fade" mode="out-in">
       <p v-if="isVisible" :key="currentIndex" class="text-sm leading-relaxed">
@@ -50,7 +52,7 @@ onUnmounted(() => {
       <span
         v-for="(_, i) in FACTS"
         :key="i"
-        class="h-1.5 rounded-full transition-all duration-300"
+        class="h-1.5 rounded-full motion-safe:transition-all motion-safe:duration-300"
         :class="i === currentIndex ? 'w-4 bg-primary' : 'w-1.5 bg-muted'"
       />
     </div>
@@ -65,5 +67,12 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: none;
+  }
 }
 </style>

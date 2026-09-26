@@ -161,7 +161,7 @@ function nextPage(): void {
     <!-- Loading overlay -->
     <div v-if="isLoading" class="mt-3 flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
       <span
-        class="size-4 animate-spin rounded-full border-2 border-muted border-t-foreground"
+        class="size-4 rounded-full border-2 border-muted border-t-foreground motion-safe:animate-spin"
         role="status"
         aria-label="Ładowanie sesji"
       ></span>

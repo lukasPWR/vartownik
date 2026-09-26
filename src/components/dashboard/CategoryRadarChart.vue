@@ -217,7 +217,7 @@ const radarOptions = computed(() => ({
       </div>
       <div v-if="isLoading" class="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
         <span
-          class="size-4 animate-spin rounded-full border-2 border-muted border-t-foreground"
+          class="size-4 rounded-full border-2 border-muted border-t-foreground motion-safe:animate-spin"
           role="status"
           aria-label="Ładowanie danych wykresu"
         ></span>
