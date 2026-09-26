@@ -280,7 +280,7 @@ describe("generation batch lifecycle", () => {
     });
   });
 
-  it("persists earlier chunk usage when a later chunk fails", async () => {
+  it("persists completed chunk usage when concurrent chunks fail", async () => {
     const repository = new MemoryRepository();
     const fakeProvider = provider(async (callIndex) => {
       if (callIndex === 1) return response(callIndex, 0.003);
@@ -304,8 +304,8 @@ describe("generation batch lifecycle", () => {
 
     expect(repository.rows[0]).toMatchObject({
       status: "failed",
-      provider_attempt_count: 3,
-      retry_count: 1,
+      provider_attempt_count: 4,
+      retry_count: 0,
       input_tokens: 20,
       output_tokens: 40,
       estimated_cost_usd: 0.005,
