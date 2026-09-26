@@ -13,17 +13,17 @@ const labels: Record<PasswordStrength, string> = {
 };
 
 const segmentColors = (index: number): string => {
-  if (props.strength === "empty") return "bg-white/20";
-  if (props.strength === "weak") return index === 0 ? "bg-red-500" : "bg-white/20";
-  if (props.strength === "medium") return index <= 1 ? "bg-yellow-400" : "bg-white/20";
-  return "bg-green-400";
+  if (props.strength === "empty") return "bg-input";
+  if (props.strength === "weak") return index === 0 ? "bg-destructive" : "bg-input";
+  if (props.strength === "medium") return index <= 1 ? "bg-warning" : "bg-input";
+  return "bg-success";
 };
 
 const labelColor: Record<PasswordStrength, string> = {
   empty: "",
-  weak: "text-red-400",
-  medium: "text-yellow-400",
-  strong: "text-green-400",
+  weak: "text-destructive",
+  medium: "text-warning",
+  strong: "text-success",
 };
 </script>
 

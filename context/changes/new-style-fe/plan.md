@@ -231,8 +231,8 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [x] 1.1 Uruchomić lint i build po zmianie tokenów i layoutu
-- [x] 1.2 Sprawdzić brak fioletowych wartości i nieużywanych selektorów w global.css
+- [x] 1.1 Uruchomić lint i build po zmianie tokenów i layoutu — a76f161
+- [x] 1.2 Sprawdzić brak fioletowych wartości i nieużywanych selektorów w global.css — a76f161
 
 #### Manual
 
@@ -242,7 +242,7 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [ ] 2.1 Uruchomić lint i build oraz skan starych akcentów w publicznych widokach i auth
+- [x] 2.1 Uruchomić lint i build oraz skan starych akcentów w publicznych widokach i auth
 
 #### Manual
 

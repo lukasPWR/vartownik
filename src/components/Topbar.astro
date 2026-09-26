@@ -1,37 +1,45 @@
 ---
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+
 const { user } = Astro.locals;
 ---
 
-<div
-  class="flex items-center justify-between px-4 py-2 mb-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white/80"
+<header
+  class="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
 >
-  {
-    user ? (
-      <>
-        <span class="text-blue-100/70">{user.email}</span>
-        <div class="flex items-center gap-3">
-          <a href="/dashboard" class="text-purple-300 hover:text-purple-100 hover:underline transition-colors">
-            Dashboard
+  <a
+    href="/"
+    class="rounded-sm text-lg font-bold tracking-tight text-foreground focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+  >
+    VARtownik
+  </a>
+  <nav aria-label="Nawigacja główna" class="flex flex-wrap items-center gap-2 sm:gap-3">
+    {
+      user ? (
+        <>
+          <span class="hidden max-w-48 truncate text-sm text-muted-foreground md:inline" title={user.email}>
+            {user.email}
+          </span>
+          <a href="/dashboard" class={buttonVariants({ variant: "ghost" })}>
+            Panel
           </a>
           <form method="POST" action="/api/auth/signout">
-            <button type="submit" class="text-purple-300 hover:text-purple-100 hover:underline transition-colors">
-              Sign out
+            <button type="submit" class={buttonVariants({ variant: "outline" })}>
+              Wyloguj się
             </button>
           </form>
-        </div>
-      </>
-    ) : (
-      <>
-        <span class="text-blue-100/70">Not signed in</span>
-        <div class="flex gap-3">
-          <a href="/auth/signin" class="text-purple-300 hover:text-purple-100 hover:underline transition-colors">
-            Sign in
+        </>
+      ) : (
+        <>
+          <a href="/auth/signin" class={buttonVariants({ variant: "ghost" })}>
+            Zaloguj się
           </a>
-          <a href="/auth/signup" class="text-purple-300 hover:text-purple-100 hover:underline transition-colors">
-            Sign up
+          <a href="/auth/signup" class={cn(buttonVariants({ variant: "outline" }), "hidden sm:inline-flex")}>
+            Załóż konto
           </a>
-        </div>
-      </>
-    )
-  }
-</div>
+        </>
+      )
+    }
+  </nav>
+</header>

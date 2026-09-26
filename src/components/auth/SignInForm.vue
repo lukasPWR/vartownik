@@ -79,9 +79,9 @@ async function handleSubmit(): Promise<void> {
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" novalidate aria-label="Formularz logowania">
+  <form @submit.prevent="handleSubmit" novalidate aria-label="Formularz logowania" :aria-busy="isSubmitting">
     <div class="mb-4">
-      <label for="signin-email" class="block text-sm font-medium text-blue-100 mb-1">E-mail</label>
+      <label for="signin-email" class="mb-1 block text-sm font-medium text-foreground">E-mail</label>
       <Input
         id="signin-email"
         ref="emailInputRef"
@@ -90,17 +90,16 @@ async function handleSubmit(): Promise<void> {
         autocomplete="email"
         :aria-describedby="errors.email ? 'signin-email-error' : undefined"
         :aria-invalid="!!errors.email"
-        class="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-purple-400 focus:ring-purple-400"
         placeholder="twoj@email.com"
         @blur="validateEmail"
       />
-      <p v-if="errors.email" id="signin-email-error" role="alert" class="mt-1 text-xs text-red-400">
+      <p v-if="errors.email" id="signin-email-error" role="alert" class="mt-1 text-xs text-destructive">
         {{ errors.email }}
       </p>
     </div>
 
     <div class="mb-6">
-      <label for="signin-password" class="block text-sm font-medium text-blue-100 mb-1">Hasło</label>
+      <label for="signin-password" class="mb-1 block text-sm font-medium text-foreground">Hasło</label>
       <Input
         id="signin-password"
         v-model="form.password"
@@ -108,11 +107,10 @@ async function handleSubmit(): Promise<void> {
         autocomplete="current-password"
         :aria-describedby="errors.password ? 'signin-password-error' : undefined"
         :aria-invalid="!!errors.password"
-        class="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-purple-400 focus:ring-purple-400"
         placeholder="••••••••"
         @blur="validatePassword"
       />
-      <p v-if="errors.password" id="signin-password-error" role="alert" class="mt-1 text-xs text-red-400">
+      <p v-if="errors.password" id="signin-password-error" role="alert" class="mt-1 text-xs text-destructive">
         {{ errors.password }}
       </p>
     </div>
@@ -121,7 +119,7 @@ async function handleSubmit(): Promise<void> {
       v-if="errors.server"
       role="alert"
       aria-live="assertive"
-      class="mb-4 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+      class="mb-4 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -141,11 +139,7 @@ async function handleSubmit(): Promise<void> {
       {{ errors.server }}
     </div>
 
-    <Button
-      type="submit"
-      :disabled="isSubmitting"
-      class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold disabled:opacity-60"
-    >
+    <Button type="submit" :disabled="isSubmitting" class="w-full">
       <span v-if="isSubmitting" class="flex items-center gap-2">
         <svg
           class="animate-spin h-4 w-4"
