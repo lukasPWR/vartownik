@@ -381,10 +381,10 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [x] 2.1 Anulować never-settling provider przed deadlinem bez uruchomienia kolejnego chunku
-- [x] 2.2 Egzekwować maksymalnie 6 prób i 2 retry łącznie bez retry trwałego 4xx
-- [x] 2.3 Agregować usage i koszt odpowiedzi odrzuconych po walidacji biznesowej
-- [x] 2.4 Uruchomić pełne testy, lint i build bez sieci oraz realnych timeoutów
+- [x] 2.1 Anulować never-settling provider przed deadlinem bez uruchomienia kolejnego chunku — 1654e81
+- [x] 2.2 Egzekwować maksymalnie 6 prób i 2 retry łącznie bez retry trwałego 4xx — 1654e81
+- [x] 2.3 Agregować usage i koszt odpowiedzi odrzuconych po walidacji biznesowej — 1654e81
+- [x] 2.4 Uruchomić pełne testy, lint i build bez sieci oraz realnych timeoutów — 1654e81
 
 #### Manual
 
@@ -394,10 +394,10 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [ ] 3.1 Zastosować migrację guardraili i oba partial unique indexes przez lokalny reset bazy
-- [ ] 3.2 Udowodnić idempotentny replay, jeden pending na użytkownika i stale recovery
-- [ ] 3.3 Zapisać prawdziwe agregaty terminalne bez fałszywego sukcesu przy błędzie finalizacji
-- [ ] 3.4 Uruchomić pełne testy, lint i build po integracji service oraz persistencji
+- [x] 3.1 Zastosować migrację guardraili i oba partial unique indexes przez lokalny reset bazy
+- [x] 3.2 Udowodnić idempotentny replay, jeden pending na użytkownika i stale recovery
+- [x] 3.3 Zapisać prawdziwe agregaty terminalne bez fałszywego sukcesu przy błędzie finalizacji
+- [x] 3.4 Uruchomić pełne testy, lint i build po integracji service oraz persistencji
 
 #### Manual
 

@@ -1,12 +1,26 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 
+import type { Json, Tables, TablesInsert, TablesUpdate } from "@/db/database.types";
 import type { SupabaseClientType } from "@/db/supabase.client";
-import { callOpenAI } from "@/lib/openai.client";
-import { buildPrompt } from "@/lib/prompts/quiz-generation.v1";
-import { AiParseError, AiProviderError, NotFoundError, RateLimitError } from "@/lib/errors";
+import {
+  AiParseError,
+  AiProviderError,
+  ConflictError,
+  GenerationPersistenceError,
+  NotFoundError,
+  RateLimitError,
+} from "@/lib/errors";
+import {
+  type GeneratedQuestion,
+  type GenerationExecutionAggregate,
+  type GenerationExecutionError,
+  type GenerationProvider,
+  orchestrateGeneration,
+} from "@/lib/services/generation-orchestrator";
+import { GENERATION_POLICY, admitGenerationRequest } from "@/lib/services/generation-policy";
 import type {
-  CreateGenerationBatchCommand,
+  GenerationBatchCreatedDTO,
   GenerationBatchDTO,
   GenerationBatchStatusDTO,
   GenerationBatchSuccessDTO,
@@ -20,58 +34,70 @@ import type {
 
 const RATE_LIMIT_MAX = 100;
 const RATE_LIMIT_WINDOW_MINUTES = 60;
-const MAX_RETRIES = 2;
 const QUESTIONS_PER_ROUND = 10;
-const MAX_GENERATION_CHUNK_SIZE = 10;
-const RETRYABLE_PROVIDER_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
-const RETRY_BASE_DELAY_MS = 1_000;
+const STALE_PENDING_AFTER_MS = 60_000;
+const INPUT_TOKEN_BUDGET_PER_ATTEMPT = 1_000;
 
 // ---------------------------------------------------------------------------
-// Zod schemas for AI response validation
+// Lifecycle contracts
 // ---------------------------------------------------------------------------
 
-const AiQuestionSchema = z.object({
-  question_text: z.string().min(5).max(1000),
-  correct_answer: z.object({
-    primary: z.string().min(1).max(1000),
-    synonyms: z.array(z.string()),
-  }),
-  difficulty_score: z.number().min(0).max(1),
-  category_slug: z.string().min(1).max(100),
+type GenerationBatchRow = Tables<"generation_batches">;
+type GenerationBatchInsert = TablesInsert<"generation_batches">;
+type GenerationBatchUpdate = TablesUpdate<"generation_batches">;
+
+interface GenerationBatchCommandInput {
+  model: string;
+  provider: string;
+  prompt_version: string;
+  requested_questions_count: number;
+}
+
+interface CanonicalRequestPayload {
+  provider: string;
+  model: string;
+  prompt_version: string;
+  requested_questions_count: number;
+  execution_policy: {
+    max_attempts: number;
+    max_retries: number;
+    max_output_tokens_per_attempt: number;
+    deadline_ms: number;
+    preflight_cost_ceiling_usd: number;
+  };
+}
+
+export interface GenerationBatchLifecycleRepository {
+  countRecent(userId: string, createdAtOrAfter: string): Promise<number | null>;
+  findByIdempotencyKey(userId: string, idempotencyKey: string): Promise<GenerationBatchRow | null>;
+  findPending(userId: string): Promise<GenerationBatchRow | null>;
+  recoverStalePending(batchId: string, createdBefore: string, finishedAt: string): Promise<boolean>;
+  insertPending(input: GenerationBatchInsert): Promise<GenerationBatchRow>;
+  finalizePending(batchId: string, update: GenerationBatchUpdate): Promise<GenerationBatchRow | null>;
+}
+
+export interface GenerationBatchServiceOptions {
+  idempotencyKey?: string;
+  signal?: AbortSignal;
+  provider?: GenerationProvider;
+  repository?: GenerationBatchLifecycleRepository;
+  now?: () => number;
+  persistQuestions?: (
+    questions: GeneratedQuestion[],
+    batchId: string,
+    model: string,
+    userId: string
+  ) => Promise<string[]>;
+}
+
+const GenerationResponsePayloadSchema = z.object({
+  rounds: z.array(
+    z.object({
+      position: z.number().int().positive(),
+      question_ids: z.array(z.string()),
+    })
+  ),
 });
-
-const AiResponseSchema = z.object({
-  questions: z.array(AiQuestionSchema),
-});
-
-type AiQuestion = z.infer<typeof AiQuestionSchema>;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-function isRetryableProviderError(error: AiProviderError): boolean {
-  return error.statusCode !== undefined && RETRYABLE_PROVIDER_STATUS_CODES.has(error.statusCode);
-}
-
-function getRetryDelayMs(attempt: number): number {
-  return RETRY_BASE_DELAY_MS * 2 ** attempt;
-}
-
-function splitIntoGenerationChunks(totalCount: number, chunkSize: number): number[] {
-  const chunks: number[] = [];
-  let remaining = totalCount;
-
-  while (remaining > 0) {
-    const currentChunkSize = Math.min(chunkSize, remaining);
-    chunks.push(currentChunkSize);
-    remaining -= currentChunkSize;
-  }
-
-  return chunks;
-}
 
 // ---------------------------------------------------------------------------
 // Rate limiting
@@ -81,20 +107,10 @@ function splitIntoGenerationChunks(totalCount: number, chunkSize: number): numbe
  * Throws `RateLimitError` if the user has exceeded RATE_LIMIT_MAX
  * generation batches within the last RATE_LIMIT_WINDOW_MINUTES minutes.
  */
-async function checkRateLimit(userId: string, supabase: SupabaseClientType): Promise<void> {
+async function checkRateLimit(userId: string, repository: GenerationBatchLifecycleRepository): Promise<void> {
   const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MINUTES * 60 * 1000).toISOString();
 
-  const { count, error } = await supabase
-    .from("generation_batches")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .gte("created_at", windowStart);
-
-  if (error) {
-    console.error("[generation-batch] Rate limit check failed", { userId, error });
-    // Fail open — let the request through if the check itself errors
-    return;
-  }
+  const count = await repository.countRecent(userId, windowStart);
 
   if ((count ?? 0) >= RATE_LIMIT_MAX) {
     throw new RateLimitError(
@@ -104,137 +120,175 @@ async function checkRateLimit(userId: string, supabase: SupabaseClientType): Pro
 }
 
 // ---------------------------------------------------------------------------
-// Batch DB operations
+// Supabase lifecycle repository
 // ---------------------------------------------------------------------------
 
-async function insertPendingBatch(
-  command: CreateGenerationBatchCommand,
-  userId: string,
-  supabase: SupabaseClientType
-): Promise<string> {
-  const requestPayload = {
+function createSupabaseLifecycleRepository(supabase: SupabaseClientType): GenerationBatchLifecycleRepository {
+  return {
+    async countRecent(userId, createdAtOrAfter) {
+      const { count, error } = await supabase
+        .from("generation_batches")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .gte("created_at", createdAtOrAfter);
+
+      if (error) {
+        console.error("[generation-batch] Rate limit check failed", { userId, error });
+        return null;
+      }
+
+      return count ?? 0;
+    },
+
+    async findByIdempotencyKey(userId, idempotencyKey) {
+      const { data, error } = await supabase
+        .from("generation_batches")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("idempotency_key", idempotencyKey)
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async findPending(userId) {
+      const { data, error } = await supabase
+        .from("generation_batches")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+
+    async recoverStalePending(batchId, createdBefore, finishedAt) {
+      const { data, error } = await supabase
+        .from("generation_batches")
+        .update({
+          status: "failed",
+          failure_code: "stale_pending",
+          error_message: "Generation batch exceeded the stale pending threshold.",
+          finished_at: finishedAt,
+        })
+        .eq("id", batchId)
+        .eq("status", "pending")
+        .lt("created_at", createdBefore)
+        .select("id")
+        .maybeSingle();
+
+      if (error) throw error;
+      return data !== null;
+    },
+
+    async insertPending(input) {
+      const { data, error } = await supabase.from("generation_batches").insert(input).select("*").single();
+      if (error || !data) throw error ?? new Error("Pending batch insert returned no row.");
+      return data;
+    },
+
+    async finalizePending(batchId, update) {
+      const { data, error } = await supabase
+        .from("generation_batches")
+        .update(update)
+        .eq("id", batchId)
+        .eq("status", "pending")
+        .select("*")
+        .maybeSingle();
+
+      if (error) throw error;
+      return data;
+    },
+  };
+}
+
+function persistenceError(message: string, cause: unknown): GenerationPersistenceError {
+  const error = new GenerationPersistenceError(message);
+  Object.defineProperty(error, "cause", { configurable: true, value: cause });
+  return error;
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+}
+
+function canonicalPayload(command: GenerationBatchCommandInput): CanonicalRequestPayload {
+  return {
+    provider: command.provider,
     model: command.model,
     prompt_version: command.prompt_version,
     requested_questions_count: command.requested_questions_count,
+    execution_policy: {
+      max_attempts: GENERATION_POLICY.maxAttempts,
+      max_retries: GENERATION_POLICY.maxRetries,
+      max_output_tokens_per_attempt: GENERATION_POLICY.maxOutputTokensPerAttempt,
+      deadline_ms: GENERATION_POLICY.deadlineMs,
+      preflight_cost_ceiling_usd: GENERATION_POLICY.preflightCostCeilingUsd,
+    },
   };
-
-  const { data, error } = await supabase
-    .from("generation_batches")
-    .insert({
-      user_id: userId,
-      model: command.model,
-      provider: command.provider,
-      prompt_version: command.prompt_version,
-      requested_questions_count: command.requested_questions_count,
-      status: "pending",
-      request_payload: requestPayload,
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    throw new Error(`Failed to create generation batch: ${error?.message}`);
-  }
-
-  return data.id;
 }
 
-async function finalizeBatch(
-  batchId: string,
-  result:
-    | { success: true; returnedCount: number; estimatedCostUsd: number | null; responsePayload: unknown }
-    | { success: false; errorMessage: string; retryCount: number },
-  supabase: SupabaseClientType
-): Promise<void> {
-  if (result.success) {
-    const { error } = await supabase
-      .from("generation_batches")
-      .update({
-        status: "success",
-        returned_questions_count: result.returnedCount,
-        estimated_cost_usd: result.estimatedCostUsd,
-        response_payload: result.responsePayload as never,
-        finished_at: new Date().toISOString(),
-      })
-      .eq("id", batchId);
+function hasEquivalentPayload(row: GenerationBatchRow, payload: CanonicalRequestPayload): boolean {
+  const stored = row.request_payload;
+  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) return false;
+  const execution = stored.execution_policy;
+  if (typeof execution !== "object" || execution === null || Array.isArray(execution)) return false;
 
-    if (error) {
-      console.error("[generation-batch] Failed to finalize batch as success", { batchId, error });
-    }
-  } else {
-    const { error } = await supabase
-      .from("generation_batches")
-      .update({
-        status: "failed",
-        error_message: result.errorMessage,
-        retry_count: result.retryCount,
-        finished_at: new Date().toISOString(),
-      })
-      .eq("id", batchId);
-
-    if (error) {
-      console.error("[generation-batch] Failed to finalize batch as failed", { batchId, error });
-    }
-  }
+  return (
+    stored.provider === payload.provider &&
+    stored.model === payload.model &&
+    stored.prompt_version === payload.prompt_version &&
+    stored.requested_questions_count === payload.requested_questions_count &&
+    execution.max_attempts === payload.execution_policy.max_attempts &&
+    execution.max_retries === payload.execution_policy.max_retries &&
+    execution.max_output_tokens_per_attempt === payload.execution_policy.max_output_tokens_per_attempt &&
+    execution.deadline_ms === payload.execution_policy.deadline_ms &&
+    execution.preflight_cost_ceiling_usd === payload.execution_policy.preflight_cost_ceiling_usd
+  );
 }
 
-// ---------------------------------------------------------------------------
-// OpenAI call with retry
-// ---------------------------------------------------------------------------
+function toBatchDTO(row: GenerationBatchRow): GenerationBatchDTO {
+  return {
+    id: row.id,
+    status: row.status,
+    model: row.model,
+    provider: row.provider,
+    prompt_version: row.prompt_version,
+    requested_questions_count: row.requested_questions_count,
+    returned_questions_count: row.returned_questions_count,
+    provider_attempt_count: row.provider_attempt_count,
+    retry_count: row.retry_count,
+    input_tokens: row.input_tokens,
+    output_tokens: row.output_tokens,
+    estimated_cost_usd: row.estimated_cost_usd,
+    failure_code: row.failure_code,
+    error_message: row.error_message,
+    finished_at: row.finished_at,
+    created_at: row.created_at,
+  };
+}
 
-/**
- * Calls the appropriate AI provider and parses the response as an array of questions.
- * Retries up to MAX_RETRIES times on JSON / schema parse failures.
- * Throws `AiParseError` after exhausting all attempts.
- */
-async function callAiWithRetry(
-  model: string,
-  promptVersion: string,
-  count: number
-): Promise<{ questions: AiQuestion[]; estimatedCostUsd: number | null; retryCount: number }> {
-  if (promptVersion !== "v1") {
-    throw new Error(`Unsupported prompt version: ${promptVersion}`);
+function toSuccessDTO(row: GenerationBatchRow): GenerationBatchSuccessDTO {
+  const responsePayload = GenerationResponsePayloadSchema.safeParse(row.response_payload);
+  if (!responsePayload.success) {
+    throw persistenceError("Successful generation batch has an invalid response payload.", responsePayload.error);
   }
 
-  const messages = buildPrompt(count);
-  let lastError: Error = new Error("Unknown error");
-  let retryCount = 0;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      retryCount = attempt;
-    }
-
-    try {
-      const { data, estimatedCostUsd } = await callOpenAI(model, messages, AiResponseSchema);
-      const validated = data.questions;
-
-      if (validated.length !== count) {
-        throw new Error(`OpenAI returned ${validated.length} questions instead of ${count}`);
-      }
-
-      console.log(`[generation-batch] Generated ${validated.length} question(s):`);
-      validated.forEach((q, i) => {
-        console.log(`  [${i + 1}] Q: ${q.question_text}`);
-        console.log(`       A: ${q.correct_answer.primary}`);
-      });
-
-      return { questions: validated, estimatedCostUsd, retryCount };
-    } catch (error) {
-      if (error instanceof AiProviderError && !isRetryableProviderError(error)) {
-        throw error;
-      }
-
-      if (attempt < MAX_RETRIES) {
-        await delay(getRetryDelayMs(attempt));
-      }
-
-      lastError = error instanceof Error ? error : new Error(String(error));
-      console.error(`[generation-batch] Attempt ${attempt + 1} failed`, { model, error: lastError.message });
-    }
-  }
-
-  throw new AiParseError(`AI returned an unparseable response after ${MAX_RETRIES + 1} attempts: ${lastError.message}`);
+  return {
+    id: row.id,
+    status: row.status,
+    returned_questions_count: row.returned_questions_count,
+    provider_attempt_count: row.provider_attempt_count,
+    retry_count: row.retry_count,
+    input_tokens: row.input_tokens,
+    output_tokens: row.output_tokens,
+    estimated_cost_usd: row.estimated_cost_usd,
+    failure_code: row.failure_code,
+    finished_at: row.finished_at,
+    rounds: responsePayload.data.rounds,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -275,7 +329,7 @@ async function resolveCategoryIds(
  * question_categories rows. Returns the UUIDs of all inserted questions.
  */
 async function insertQuestionsAndCategories(
-  questions: AiQuestion[],
+  questions: GeneratedQuestion[],
   batchId: string,
   model: string,
   userId: string,
@@ -376,84 +430,283 @@ function distributeToRounds(questionIds: string[], questionsPerRound: number): R
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * Orchestrates the full generation batch lifecycle:
- * rate-limit → insert pending → call AI → validate → dedup → insert → finalize → return DTO.
- *
- * Throws typed errors (`RateLimitError`, `AiParseError`) that the caller maps to HTTP status codes.
- */
-export async function createGenerationBatch(
-  command: CreateGenerationBatchCommand,
+export type GenerationBatchCreateResult = GenerationBatchCreatedDTO | GenerationBatchSuccessDTO;
+
+function isStalePending(row: GenerationBatchRow, now: number): boolean {
+  const createdAt = Date.parse(row.created_at);
+  return Number.isFinite(createdAt) && createdAt < now - STALE_PENDING_AFTER_MS;
+}
+
+async function recoverStalePending(
+  row: GenerationBatchRow,
+  repository: GenerationBatchLifecycleRepository,
+  now: number
+): Promise<boolean> {
+  try {
+    return await repository.recoverStalePending(
+      row.id,
+      new Date(now - STALE_PENDING_AFTER_MS).toISOString(),
+      new Date(now).toISOString()
+    );
+  } catch (error) {
+    throw persistenceError("Failed to recover a stale generation batch.", error);
+  }
+}
+
+function replayBatch(row: GenerationBatchRow): GenerationBatchCreateResult {
+  if (row.status === "pending") return toBatchDTO(row);
+  if (row.status === "success") return toSuccessDTO(row);
+
+  throw new ConflictError("The idempotency key belongs to a failed generation batch; use a new key.");
+}
+
+async function resolveExistingAdmission(
+  repository: GenerationBatchLifecycleRepository,
   userId: string,
-  supabase: SupabaseClientType
-): Promise<GenerationBatchSuccessDTO> {
-  await checkRateLimit(userId, supabase);
-
-  const batchId = await insertPendingBatch(command, userId, supabase);
-
-  let questions: AiQuestion[];
-  let estimatedCostUsd: number | null;
-  let retryCount: number;
+  idempotencyKey: string,
+  payload: CanonicalRequestPayload,
+  now: number
+): Promise<GenerationBatchCreateResult | null> {
+  let sameKey: GenerationBatchRow | null;
+  let active: GenerationBatchRow | null;
 
   try {
-    const chunkSizes = splitIntoGenerationChunks(command.requested_questions_count, MAX_GENERATION_CHUNK_SIZE);
-    const generatedQuestions: AiQuestion[] = [];
-    let totalEstimatedCostUsd = 0;
-    let totalHasEstimatedCost = false;
-    let highestRetryCount = 0;
+    sameKey = await repository.findByIdempotencyKey(userId, idempotencyKey);
+  } catch (error) {
+    throw persistenceError("Failed to resolve generation idempotency.", error);
+  }
 
-    for (const chunkSize of chunkSizes) {
-      const chunkResult = await callAiWithRetry(command.model, command.prompt_version, chunkSize);
-      generatedQuestions.push(...chunkResult.questions);
-      highestRetryCount = Math.max(highestRetryCount, chunkResult.retryCount);
+  if (sameKey) {
+    if (!hasEquivalentPayload(sameKey, payload)) {
+      throw new ConflictError("The idempotency key was already used with a different generation payload.");
+    }
 
-      if (chunkResult.estimatedCostUsd !== null) {
-        totalHasEstimatedCost = true;
-        totalEstimatedCostUsd += chunkResult.estimatedCostUsd;
+    if (sameKey.status === "pending" && isStalePending(sameKey, now)) {
+      const recovered = await recoverStalePending(sameKey, repository, now);
+      if (recovered) {
+        throw new ConflictError("The stale generation batch was closed; retry with a new idempotency key.");
+      }
+
+      try {
+        sameKey = await repository.findByIdempotencyKey(userId, idempotencyKey);
+      } catch (error) {
+        throw persistenceError("Failed to resolve idempotency after stale recovery.", error);
+      }
+
+      if (!sameKey || !hasEquivalentPayload(sameKey, payload)) {
+        throw persistenceError(
+          "Generation idempotency changed while recovering a stale batch.",
+          new Error("Idempotency race could not be resolved.")
+        );
       }
     }
 
-    questions = generatedQuestions;
-    estimatedCostUsd = totalHasEstimatedCost ? parseFloat(totalEstimatedCostUsd.toFixed(6)) : null;
-    retryCount = highestRetryCount;
+    return replayBatch(sameKey);
+  }
+
+  try {
+    active = await repository.findPending(userId);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await finalizeBatch(batchId, { success: false, errorMessage: message, retryCount: MAX_RETRIES }, supabase);
+    throw persistenceError("Failed to resolve the active generation batch.", error);
+  }
+
+  if (!active) return null;
+
+  if (isStalePending(active, now)) {
+    const recovered = await recoverStalePending(active, repository, now);
+    if (recovered) return null;
+
+    try {
+      active = await repository.findPending(userId);
+    } catch (error) {
+      throw persistenceError("Failed to resolve the active generation batch after stale recovery.", error);
+    }
+
+    if (!active) return null;
+  }
+
+  if (hasEquivalentPayload(active, payload)) return toBatchDTO(active);
+
+  throw new ConflictError("Another generation batch with a different payload is already pending.");
+}
+
+function aggregateFromError(error: unknown): GenerationExecutionAggregate {
+  if (error instanceof Error && "aggregate" in error) {
+    return (error as GenerationExecutionError).aggregate;
+  }
+
+  return { attemptCount: 0, retryCount: 0, inputTokens: 0, outputTokens: 0, observedCostUsd: 0 };
+}
+
+function failureCode(error: unknown): string {
+  if (error instanceof Error && "code" in error && typeof error.code === "string") return error.code;
+  if (error instanceof AiProviderError) return "provider_failed";
+  if (error instanceof AiParseError) return "parse_failed";
+  return "generation_failed";
+}
+
+function telemetryUpdate(
+  aggregate: GenerationExecutionAggregate
+): Pick<
+  GenerationBatchUpdate,
+  "provider_attempt_count" | "retry_count" | "input_tokens" | "output_tokens" | "estimated_cost_usd"
+> {
+  return {
+    provider_attempt_count: aggregate.attemptCount,
+    retry_count: aggregate.retryCount,
+    input_tokens: aggregate.inputTokens,
+    output_tokens: aggregate.outputTokens,
+    estimated_cost_usd: Number(aggregate.observedCostUsd.toFixed(6)),
+  };
+}
+
+async function finalizePendingOrThrow(
+  repository: GenerationBatchLifecycleRepository,
+  batchId: string,
+  update: GenerationBatchUpdate
+): Promise<GenerationBatchRow> {
+  try {
+    const row = await repository.finalizePending(batchId, update);
+    if (!row) {
+      throw new Error("The batch was no longer pending when finalization was attempted.");
+    }
+    return row;
+  } catch (error) {
+    if (error instanceof GenerationPersistenceError) throw error;
+    throw persistenceError("Generation batch finalization was not confirmed.", error);
+  }
+}
+
+/**
+ * Orchestrates the full generation batch lifecycle:
+ * idempotency → policy/rate limit → pending → generation → persistence → terminal state.
+ *
+ * Phase 4 will always supply an idempotency key and request signal from HTTP.
+ * Until then a fresh key keeps the existing route source-compatible.
+ */
+export async function createGenerationBatch(
+  command: GenerationBatchCommandInput,
+  userId: string,
+  supabase: SupabaseClientType | null,
+  options: GenerationBatchServiceOptions = {}
+): Promise<GenerationBatchCreateResult> {
+  const now = options.now ?? Date.now;
+  const repository = options.repository ?? (supabase ? createSupabaseLifecycleRepository(supabase) : null);
+
+  if (!repository) {
+    throw persistenceError("Generation lifecycle repository is unavailable.", new Error("Missing Supabase client."));
+  }
+
+  const idempotencyKey = options.idempotencyKey ?? randomUUID();
+  const payload = canonicalPayload(command);
+  const replay = await resolveExistingAdmission(repository, userId, idempotencyKey, payload, now());
+  if (replay) return replay;
+
+  const admission = admitGenerationRequest(
+    {
+      provider: command.provider,
+      model: command.model,
+      promptVersion: command.prompt_version,
+      requestedQuestionsCount: command.requested_questions_count,
+    },
+    {
+      budget: {
+        attemptCount: GENERATION_POLICY.maxAttempts,
+        retryCount: GENERATION_POLICY.maxRetries,
+        inputTokensPerAttempt: INPUT_TOKEN_BUDGET_PER_ATTEMPT,
+        outputTokensPerAttempt: GENERATION_POLICY.maxOutputTokensPerAttempt,
+        deadlineMs: GENERATION_POLICY.deadlineMs,
+      },
+    }
+  );
+
+  await checkRateLimit(userId, repository);
+
+  let batch: GenerationBatchRow;
+  try {
+    batch = await repository.insertPending({
+      user_id: userId,
+      model: command.model,
+      provider: command.provider,
+      prompt_version: command.prompt_version,
+      requested_questions_count: command.requested_questions_count,
+      status: "pending",
+      idempotency_key: idempotencyKey,
+      request_payload: {
+        ...payload,
+        execution_policy: {
+          ...payload.execution_policy,
+          projected_input_tokens_per_attempt: INPUT_TOKEN_BUDGET_PER_ATTEMPT,
+          projected_worst_case_cost_usd: admission.worstCaseCostUsd,
+        },
+      } as Json,
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const raceWinner = await resolveExistingAdmission(repository, userId, idempotencyKey, payload, now());
+      if (raceWinner) return raceWinner;
+    }
+    throw persistenceError("Failed to create a pending generation batch.", error);
+  }
+
+  let aggregate: GenerationExecutionAggregate = aggregateFromError(null);
+  let questions: GeneratedQuestion[];
+
+  try {
+    const provider = options.provider ?? (await import("@/lib/openai.client")).openAIProvider;
+    const execution = await orchestrateGeneration({
+      provider,
+      deadlineAt: now() + GENERATION_POLICY.deadlineMs,
+      signal: options.signal,
+    });
+    questions = execution.questions;
+    aggregate = execution.aggregate;
+  } catch (error) {
+    aggregate = aggregateFromError(error);
+    await finalizePendingOrThrow(repository, batch.id, {
+      status: "failed",
+      ...telemetryUpdate(aggregate),
+      failure_code: failureCode(error),
+      error_message: error instanceof Error ? error.message : String(error),
+      finished_at: new Date(now()).toISOString(),
+    });
     throw error;
   }
 
   let questionIds: string[];
   try {
-    questionIds = await insertQuestionsAndCategories(questions, batchId, command.model, userId, supabase);
+    const persistQuestions =
+      options.persistQuestions ??
+      (supabase
+        ? (generated: GeneratedQuestion[], batchId: string, model: string, ownerId: string) =>
+            insertQuestionsAndCategories(generated, batchId, model, ownerId, supabase)
+        : null);
+
+    if (!persistQuestions) throw new Error("Question persistence is unavailable.");
+    questionIds = await persistQuestions(questions, batch.id, command.model, userId);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await finalizeBatch(batchId, { success: false, errorMessage: message, retryCount }, supabase);
-    throw error;
+    await finalizePendingOrThrow(repository, batch.id, {
+      status: "failed",
+      ...telemetryUpdate(aggregate),
+      failure_code: "persistence_failed",
+      error_message: error instanceof Error ? error.message : String(error),
+      finished_at: new Date(now()).toISOString(),
+    });
+    throw persistenceError("Failed to persist generated questions.", error);
   }
 
   const rounds = distributeToRounds(questionIds, QUESTIONS_PER_ROUND);
-  const finishedAt = new Date().toISOString();
-
-  await finalizeBatch(
-    batchId,
-    {
-      success: true,
-      returnedCount: questionIds.length,
-      estimatedCostUsd,
-      responsePayload: { rounds },
-    },
-    supabase
-  );
-
-  return {
-    id: batchId,
+  const finalized = await finalizePendingOrThrow(repository, batch.id, {
     status: "success",
     returned_questions_count: questionIds.length,
-    retry_count: retryCount,
-    estimated_cost_usd: estimatedCostUsd,
-    finished_at: finishedAt,
-    rounds,
-  };
+    ...telemetryUpdate(aggregate),
+    failure_code: null,
+    error_message: null,
+    response_payload: { rounds } as unknown as Json,
+    finished_at: new Date(now()).toISOString(),
+  });
+
+  return toSuccessDTO(finalized);
 }
 
 // ---------------------------------------------------------------------------
@@ -471,7 +724,9 @@ export async function getGenerationBatchById(
 ): Promise<GenerationBatchStatusDTO> {
   const { data, error } = await supabase
     .from("generation_batches")
-    .select("id, status, returned_questions_count, retry_count, estimated_cost_usd, error_message, finished_at")
+    .select(
+      "id, status, returned_questions_count, provider_attempt_count, retry_count, input_tokens, output_tokens, estimated_cost_usd, failure_code, error_message, finished_at"
+    )
     .eq("id", id)
     .eq("user_id", userId)
     .single();
@@ -519,7 +774,7 @@ export async function listGenerationBatches(
   let dbQuery = supabase
     .from("generation_batches")
     .select(
-      "id, status, model, provider, prompt_version, requested_questions_count, returned_questions_count, retry_count, estimated_cost_usd, error_message, finished_at, created_at",
+      "id, status, model, provider, prompt_version, requested_questions_count, returned_questions_count, provider_attempt_count, retry_count, input_tokens, output_tokens, estimated_cost_usd, failure_code, error_message, finished_at, created_at",
       { count: "exact" }
     )
     .eq("user_id", userId);
