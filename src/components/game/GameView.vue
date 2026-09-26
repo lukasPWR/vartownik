@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from "vue";
-import type {
-  GenerationBatchCreatedDTO,
-  GenerationBatchSuccessDTO,
-  GenerationBatchDTO,
-  SessionCreatedDTO,
-  RoundSummaryDTO,
-  RoundDTO,
-} from "@/types";
+import type { GenerationBatchDTO, SessionCreatedDTO, RoundSummaryDTO, RoundDTO } from "@/types";
+import {
+  createGenerationRequestClient,
+  generationErrorTypeFromCode,
+  type GenerationErrorType,
+} from "@/lib/generation-request.client";
 
 import GenerationLoadingScreen from "./GenerationLoadingScreen.vue";
 import QuizFocusMode from "./QuizFocusMode.vue";
@@ -18,7 +16,6 @@ import QuizFocusMode from "./QuizFocusMode.vue";
 
 type GameState = "loading" | "playing";
 type GenerationPhase = "initiating" | "generating" | "verifying" | "preparing" | "finalizing";
-type GenerationErrorType = "unprocessable" | "rate_limit" | "upstream" | "unknown";
 
 // ---------------------------------------------------------------------------
 // State — game state machine
@@ -35,6 +32,7 @@ const pollingIntervalId = ref<ReturnType<typeof setInterval> | null>(null);
 const generationStartedAt = ref<number>(Date.now());
 const now = ref<number>(Date.now());
 let clockInterval: ReturnType<typeof setInterval> | null = null;
+const generationRequestClient = createGenerationRequestClient();
 
 const elapsedSeconds = computed(() => Math.floor((now.value - generationStartedAt.value) / 1000));
 
@@ -58,12 +56,6 @@ const isTimerExpired = ref<boolean>(false);
 
 const POLLING_INTERVAL_MS = 3000;
 const MAX_GENERATION_TIMEOUT_MS = 50_000;
-const GENERATION_BATCH_COMMAND = {
-  model: "gpt-6-luna",
-  provider: "openai",
-  prompt_version: "v1",
-  requested_questions_count: 40,
-} as const;
 
 // ---------------------------------------------------------------------------
 // Phase progression (time-based heuristic)
@@ -101,7 +93,7 @@ async function pollBatchStatus(): Promise<void> {
   if (elapsed > MAX_GENERATION_TIMEOUT_MS) {
     stopPolling();
     hasError.value = true;
-    errorType.value = "upstream";
+    errorType.value = "deadline";
     return;
   }
 
@@ -114,11 +106,11 @@ async function pollBatchStatus(): Promise<void> {
       if (res.status === 422) {
         stopPolling();
         hasError.value = true;
-        errorType.value = "unprocessable";
+        errorType.value = "parse";
       } else {
         stopPolling();
         hasError.value = true;
-        errorType.value = "upstream";
+        errorType.value = "provider";
       }
       return;
     }
@@ -131,13 +123,13 @@ async function pollBatchStatus(): Promise<void> {
     } else if (batch.status === "failed") {
       stopPolling();
       hasError.value = true;
-      errorType.value = "unknown";
+      errorType.value = generationErrorTypeFromCode(batch.failure_code);
     }
     // pending → keep polling
   } catch {
     stopPolling();
     hasError.value = true;
-    errorType.value = "upstream";
+    errorType.value = "provider";
   }
 }
 
@@ -206,7 +198,7 @@ async function loadRound(position: number): Promise<void> {
 // Generation start / retry
 // ---------------------------------------------------------------------------
 
-async function startGeneration(): Promise<void> {
+async function startGeneration(isRetry = false): Promise<void> {
   hasError.value = false;
   errorType.value = null;
   batchId.value = null;
@@ -214,37 +206,23 @@ async function startGeneration(): Promise<void> {
   generationStartedAt.value = Date.now();
   now.value = Date.now();
 
-  try {
-    const res = await fetch("/api/generation-batches", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(GENERATION_BATCH_COMMAND),
-    });
+  const result = isRetry ? await generationRequestClient.retry() : await generationRequestClient.start();
 
-    if (res.status === 201) {
-      const batch: GenerationBatchCreatedDTO = await res.json();
-      batchId.value = batch.id;
-      startPolling();
-    } else if (res.status === 202) {
-      const batch: GenerationBatchSuccessDTO = await res.json();
-      await createSession(batch.id);
-    } else if (res.status === 422) {
-      hasError.value = true;
-      errorType.value = "unprocessable";
-    } else if (res.status === 429) {
-      hasError.value = true;
-      errorType.value = "rate_limit";
-    } else if (res.status === 502) {
-      hasError.value = true;
-      errorType.value = "upstream";
-    } else {
-      hasError.value = true;
-      errorType.value = "unknown";
-    }
-  } catch {
-    hasError.value = true;
-    errorType.value = "upstream";
+  if (result.kind === "cancelled") return;
+
+  if (result.kind === "pending") {
+    batchId.value = result.batch.id;
+    startPolling();
+    return;
   }
+
+  if (result.kind === "success") {
+    await createSession(result.batch.id);
+    return;
+  }
+
+  hasError.value = true;
+  errorType.value = result.errorType;
 }
 
 // ---------------------------------------------------------------------------
@@ -260,13 +238,15 @@ function navigateToDashboard(): void {
 // ---------------------------------------------------------------------------
 
 function handleCancel(): void {
+  generationRequestClient.cancel();
   stopPolling();
   navigateToDashboard();
 }
 
 async function handleRetry(): Promise<void> {
+  generationRequestClient.cancel();
   stopPolling();
-  await startGeneration();
+  await startGeneration(true);
 }
 
 async function handleAnswerSubmitted(): Promise<void> {
@@ -315,6 +295,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener("beforeunload", handleBeforeUnload);
   if (clockInterval !== null) clearInterval(clockInterval);
+  generationRequestClient.dispose();
   stopPolling();
 });
 </script>

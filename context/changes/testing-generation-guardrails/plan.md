@@ -394,10 +394,10 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [x] 3.1 Zastosować migrację guardraili i oba partial unique indexes przez lokalny reset bazy
-- [x] 3.2 Udowodnić idempotentny replay, jeden pending na użytkownika i stale recovery
-- [x] 3.3 Zapisać prawdziwe agregaty terminalne bez fałszywego sukcesu przy błędzie finalizacji
-- [x] 3.4 Uruchomić pełne testy, lint i build po integracji service oraz persistencji
+- [x] 3.1 Zastosować migrację guardraili i oba partial unique indexes przez lokalny reset bazy — `0eda52a`
+- [x] 3.2 Udowodnić idempotentny replay, jeden pending na użytkownika i stale recovery — `0eda52a`
+- [x] 3.3 Zapisać prawdziwe agregaty terminalne bez fałszywego sukcesu przy błędzie finalizacji — `0eda52a`
+- [x] 3.4 Uruchomić pełne testy, lint i build po integracji service oraz persistencji — `0eda52a`
 
 #### Manual
 
@@ -407,10 +407,10 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [ ] 4.1 Odrzucić anonimowe i błędne admission przed service oraz providerem
-- [ ] 4.2 Udowodnić idempotency key, pending replay i abort klienta bez płatnych wywołań
-- [ ] 4.3 Rozróżnić mapowanie conflict, budget, deadline, cancel, provider, parse i persistence failure
-- [ ] 4.4 Uruchomić pełne bramy i opisać dostarczony wzorzec w test-plan cookbook
+- [x] 4.1 Odrzucić anonimowe i błędne admission przed service oraz providerem
+- [x] 4.2 Udowodnić idempotency key, pending replay i abort klienta bez płatnych wywołań
+- [x] 4.3 Rozróżnić mapowanie conflict, budget, deadline, cancel, provider, parse i persistence failure
+- [x] 4.4 Uruchomić pełne bramy i opisać dostarczony wzorzec w test-plan cookbook
 
 #### Manual
 

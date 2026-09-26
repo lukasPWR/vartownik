@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { Button } from "@/components/ui/button";
+import type { GenerationErrorType } from "@/lib/generation-request.client";
 import LoadingPhaseIndicator from "./LoadingPhaseIndicator.vue";
 import FootballFactCarousel from "./FootballFactCarousel.vue";
 import GenerationErrorMessage from "./GenerationErrorMessage.vue";
 
 type GenerationPhase = "initiating" | "generating" | "verifying" | "preparing" | "finalizing";
-type GenerationErrorType = "unprocessable" | "rate_limit" | "upstream" | "unknown";
 
 interface Props {
   phase: GenerationPhase;

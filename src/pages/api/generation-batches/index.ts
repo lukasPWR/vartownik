@@ -1,164 +1,190 @@
 import type { APIRoute } from "astro";
 import { z } from "zod";
 
-import { createClient } from "@/lib/supabase";
 import {
   createGenerationBatch,
   listGenerationBatches,
   ListGenerationBatchesQuerySchema,
 } from "@/lib/services/generation-batch.service";
-import { AiParseError, AiProviderError, RateLimitError } from "@/lib/errors";
+import {
+  AiParseError,
+  AiProviderError,
+  ConflictError,
+  GenerationAdmissionError,
+  GenerationBudgetExceededError,
+  GenerationCancelledError,
+  GenerationDeadlineError,
+  GenerationPersistenceError,
+  RateLimitError,
+} from "@/lib/errors";
 
 export const prerender = false;
 
-// ---------------------------------------------------------------------------
-// Input validation schema
-// ---------------------------------------------------------------------------
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
-const CreateGenerationBatchSchema = z.object({
-  model: z.string().min(1).max(100),
-  provider: z.literal("openai"),
-  prompt_version: z.string().regex(/^v\d+$/, "prompt_version must match pattern v<number> (e.g. v1)"),
-  requested_questions_count: z.number().int().positive().max(200).default(40),
-});
+const CreateGenerationBatchSchema = z
+  .object({
+    model: z.literal("gpt-6-luna"),
+    provider: z.literal("openai"),
+    prompt_version: z.literal("v1"),
+    requested_questions_count: z.literal(40),
+  })
+  .strict();
 
-// ---------------------------------------------------------------------------
-// Route handler
-// ---------------------------------------------------------------------------
+const IdempotencyKeySchema = z.string().uuid();
 
-export const POST: APIRoute = async (context) => {
-  const { locals, request, cookies } = context;
+type CreateGenerationBatch = typeof createGenerationBatch;
 
-  // AUTH DISABLED FOR TESTING — restore before production
-  // if (!locals.user) {
-  //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //     status: 401,
-  //     headers: { "Content-Type": "application/json" },
-  //   });
-  // }
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
+export interface GenerationBatchPostDependencies {
+  createBatch?: CreateGenerationBatch;
+}
 
-  // Parse and validate request body
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return new Response(JSON.stringify({ error: "Request body must be valid JSON" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+function jsonResponse(status: number, body: unknown, headers: HeadersInit = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...JSON_HEADERS, ...headers },
+  });
+}
+
+function errorResponse(status: number, code: string, message: string, headers: HeadersInit = {}): Response {
+  return jsonResponse(status, { error: { code, message } }, headers);
+}
+
+function mapGenerationError(error: unknown): Response | null {
+  if (error instanceof ConflictError) {
+    return errorResponse(409, "conflict", error.message);
   }
 
-  const parsed = CreateGenerationBatchSchema.safeParse(body);
-  if (!parsed.success) {
-    return new Response(
-      JSON.stringify({
-        error: "Validation failed",
-        issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+  if (error instanceof GenerationAdmissionError) {
+    return errorResponse(400, error.code, error.message);
   }
 
-  const command = parsed.data;
+  if (error instanceof GenerationBudgetExceededError) {
+    return errorResponse(422, error.code, error.message);
+  }
 
-  // Use SSR Supabase client (cookie-based session) for user-scoped operations
-  const supabase = createClient(request.headers, cookies);
+  if (error instanceof GenerationDeadlineError) {
+    return errorResponse(504, error.code, error.message);
+  }
 
-  try {
-    const result = await createGenerationBatch(command, locals.user?.id ?? TEST_USER_ID, supabase);
+  if (error instanceof GenerationCancelledError) {
+    return errorResponse(408, error.code, error.message);
+  }
 
-    return new Response(JSON.stringify(result), {
-      status: 202,
-      headers: { "Content-Type": "application/json" },
-    });
-  } catch (error) {
-    if (error instanceof RateLimitError) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 429,
-        headers: {
-          "Content-Type": "application/json",
-          "Retry-After": String(10 * 60), // 10 minutes in seconds
+  if (error instanceof GenerationPersistenceError) {
+    return errorResponse(503, error.code, error.message);
+  }
+
+  if (error instanceof RateLimitError) {
+    return errorResponse(429, "rate_limit", error.message, { "Retry-After": String(10 * 60) });
+  }
+
+  if (error instanceof AiParseError) {
+    return errorResponse(422, "parse_failed", error.message);
+  }
+
+  if (error instanceof AiProviderError) {
+    return errorResponse(error.statusCode === 429 ? 429 : 502, "provider_failed", "AI provider request failed.");
+  }
+
+  return null;
+}
+
+/**
+ * Builds the POST handler around an injectable service boundary. Production
+ * uses the real lifecycle service; tests can prove admission ordering without
+ * loading Supabase or a provider.
+ */
+export function createGenerationBatchPostHandler(dependencies: GenerationBatchPostDependencies = {}): APIRoute {
+  const createBatch = dependencies.createBatch ?? createGenerationBatch;
+
+  return async ({ locals, request }) => {
+    if (!locals.user) {
+      return errorResponse(401, "unauthorized", "Unauthorized");
+    }
+
+    const parsedKey = IdempotencyKeySchema.safeParse(request.headers.get("Idempotency-Key"));
+    if (!parsedKey.success) {
+      return errorResponse(400, "invalid_idempotency_key", "Idempotency-Key must be a valid UUID.");
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return errorResponse(400, "invalid_json", "Request body must be valid JSON.");
+    }
+
+    const parsed = CreateGenerationBatchSchema.safeParse(body);
+    if (!parsed.success) {
+      return jsonResponse(400, {
+        error: {
+          code: "validation_failed",
+          message: "Validation failed.",
+          issues: parsed.error.issues.map((issue) => ({
+            path: issue.path.join("."),
+            message: issue.message,
+          })),
         },
       });
     }
 
-    if (error instanceof AiParseError) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 422,
-        headers: { "Content-Type": "application/json" },
+    try {
+      const result = await createBatch(parsed.data, locals.user.id, locals.supabase, {
+        idempotencyKey: parsedKey.data,
+        signal: request.signal,
       });
-    }
 
-    if (error instanceof AiProviderError) {
-      // TODO: restore generic message before production
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: error.statusCode === 429 ? 429 : 502,
-        headers: { "Content-Type": "application/json" },
+      return jsonResponse(result.status === "pending" ? 201 : 202, result);
+    } catch (error) {
+      const mapped = mapGenerationError(error);
+      if (mapped) return mapped;
+
+      console.error("[POST /api/generation-batches] Unexpected error", {
+        userId: locals.user.id,
+        error: error instanceof Error ? error.message : String(error),
       });
+
+      return errorResponse(500, "internal_error", "Internal server error");
     }
+  };
+}
 
-    // Unexpected error — log with context but don't leak internals
-    console.error("[POST /api/generation-batches] Unexpected error", {
-      userId: locals.user?.id ?? TEST_USER_ID,
-      error: error instanceof Error ? error.message : String(error),
-    });
+export const POST: APIRoute = createGenerationBatchPostHandler();
 
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+// ---------------------------------------------------------------------------
+// GET /api/generation-batches - paginated list for the authenticated user
+// ---------------------------------------------------------------------------
+
+export const GET: APIRoute = async ({ locals, request }) => {
+  if (!locals.user) {
+    return errorResponse(401, "unauthorized", "Unauthorized");
   }
-};
 
-// ---------------------------------------------------------------------------
-// GET /api/generation-batches — paginated list for the authenticated user
-// ---------------------------------------------------------------------------
-
-export const GET: APIRoute = async ({ locals, request, cookies }) => {
-  // AUTH DISABLED FOR TESTING — restore before production
-  // if (!locals.user) {
-  //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //     status: 401,
-  //     headers: { "Content-Type": "application/json" },
-  //   });
-  // }
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
-  const userId = locals.user?.id ?? TEST_USER_ID;
-
-  // Parse and validate query string params
   const searchParams = new URL(request.url).searchParams;
-  const rawQuery = Object.fromEntries(searchParams);
-
-  const parsed = ListGenerationBatchesQuerySchema.safeParse(rawQuery);
+  const parsed = ListGenerationBatchesQuerySchema.safeParse(Object.fromEntries(searchParams));
   if (!parsed.success) {
-    return new Response(
-      JSON.stringify({
-        error: "Validation failed",
-        issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
-      }),
-      { status: 400, headers: { "Content-Type": "application/json" } }
-    );
+    return jsonResponse(400, {
+      error: {
+        code: "validation_failed",
+        message: "Validation failed.",
+        issues: parsed.error.issues.map((issue) => ({
+          path: issue.path.join("."),
+          message: issue.message,
+        })),
+      },
+    });
   }
-
-  const supabase = createClient(request.headers, cookies);
 
   try {
-    const result = await listGenerationBatches(supabase, parsed.data, userId);
-
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    const result = await listGenerationBatches(locals.supabase, parsed.data, locals.user.id);
+    return jsonResponse(200, result);
   } catch (error) {
     console.error("[GET /api/generation-batches] Unexpected error", {
-      userId,
+      userId: locals.user.id,
       error: error instanceof Error ? error.message : String(error),
     });
 
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return errorResponse(500, "internal_error", "Internal server error");
   }
 };
