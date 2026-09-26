@@ -62,22 +62,14 @@ afterEach(() => {
 });
 
 describe("generation orchestrator", () => {
-  it("aborts a never-settling provider at the batch deadline without starting another chunk", async () => {
+  it("aborts all four active chunks at the batch deadline", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
-    let observedSignal: AbortSignal | undefined;
-    let signalWasAborted = false;
+    const observedSignals: AbortSignal[] = [];
     const provider = providerFrom(
       (request) =>
         new Promise(() => {
-          observedSignal = request.signal;
-          request.signal.addEventListener(
-            "abort",
-            () => {
-              signalWasAborted = true;
-            },
-            { once: true }
-          );
+          observedSignals.push(request.signal);
         })
     );
 
@@ -87,37 +79,51 @@ describe("generation orchestrator", () => {
     }).catch((error: unknown) => error as GenerationExecutionError);
 
     await vi.advanceTimersByTimeAsync(GENERATION_POLICY.deadlineMs - 1);
-    expect(signalWasAborted).toBe(false);
+    expect(observedSignals).toHaveLength(4);
+    expect(observedSignals.every((signal) => !signal.aborted)).toBe(true);
 
     await vi.advanceTimersByTimeAsync(1);
     const error = await settled;
 
     expect(error).toBeInstanceOf(GenerationDeadlineError);
     expect(error.aggregate).toEqual({
-      attemptCount: 1,
+      attemptCount: 4,
       retryCount: 0,
       inputTokens: 0,
       outputTokens: 0,
       observedCostUsd: 0,
     });
-    expect(provider.generate).toHaveBeenCalledOnce();
-    expect(observedSignal?.aborted).toBe(true);
-    expect(signalWasAborted).toBe(true);
+    expect(provider.generate).toHaveBeenCalledTimes(4);
+    expect(new Set(observedSignals).size).toBe(1);
+    expect(observedSignals.every((signal) => signal.aborted)).toBe(true);
   });
 
-  it("uses exactly four provider calls for the happy path", async () => {
+  it("starts four chunks together and preserves their output order", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
     let sequence = 0;
-    const provider = providerFrom(async () => response(10, DEFAULT_USAGE, sequence++));
+    const provider = providerFrom(async () => {
+      const index = sequence++;
+      await new Promise((resolve) => setTimeout(resolve, [15_000, 5_000, 10_000, 2_000][index]));
+      return response(10, DEFAULT_USAGE, index);
+    });
 
-    const result = await orchestrateGeneration({
+    const resultPromise = orchestrateGeneration({
       provider,
       deadlineAt: GENERATION_POLICY.deadlineMs,
     });
+    expect(provider.generate).toHaveBeenCalledTimes(4);
+    await vi.advanceTimersByTimeAsync(15_000);
+    const result = await resultPromise;
 
     expect(provider.generate).toHaveBeenCalledTimes(4);
     expect(result.questions).toHaveLength(40);
+    expect([0, 1, 2, 3].map((index) => result.questions[index * 10].question_text)).toEqual([
+      "Question 0-0",
+      "Question 1-0",
+      "Question 2-0",
+      "Question 3-0",
+    ]);
     expect(result.aggregate).toEqual({
       attemptCount: 4,
       retryCount: 0,
@@ -150,7 +156,7 @@ describe("generation orchestrator", () => {
     expect(provider.generate).toHaveBeenCalledTimes(6);
     expect(result.aggregate.attemptCount).toBe(6);
     expect(result.aggregate.retryCount).toBe(2);
-    expect(requests.map((request) => request.timeoutMs)).toEqual([40_000, 39_000, 37_000, 37_000, 37_000, 37_000]);
+    expect(requests.map((request) => request.timeoutMs)).toEqual([40_000, 40_000, 40_000, 40_000, 39_000, 38_000]);
     expect(new Set(requests.map((request) => request.signal)).size).toBe(1);
     expect(requests.every((request) => request.maxOutputTokens === 4_096)).toBe(true);
   });
@@ -168,34 +174,33 @@ describe("generation orchestrator", () => {
     }).catch((caught: unknown) => caught as GenerationExecutionError);
 
     expect(error).toBeInstanceOf(AiProviderError);
-    expect(error.aggregate.attemptCount).toBe(1);
+    expect(error.aggregate.attemptCount).toBe(4);
     expect(error.aggregate.retryCount).toBe(0);
-    expect(provider.generate).toHaveBeenCalledOnce();
+    expect(provider.generate).toHaveBeenCalledTimes(4);
     expect(vi.getTimerCount()).toBe(0);
   });
 
-  it("does not start another chunk after the global attempt budget is exhausted", async () => {
+  it("does not start a retry after the global attempt budget is exhausted", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(0);
     let callIndex = 0;
     const provider = providerFrom(async () => {
-      callIndex += 1;
-      if (callIndex < 3) return response(9, DEFAULT_USAGE, callIndex);
-      return response(10, DEFAULT_USAGE, callIndex);
+      const index = callIndex++;
+      return response(index === 0 ? 9 : 10, DEFAULT_USAGE, index);
     });
 
     const resultPromise = orchestrateGeneration({
       provider,
       deadlineAt: GENERATION_POLICY.deadlineMs,
-      policy: policy({ maxAttempts: 3 }),
+      policy: policy({ maxAttempts: 4 }),
     }).catch((caught: unknown) => caught as GenerationExecutionError);
     await vi.runAllTimersAsync();
     const error = await resultPromise;
 
     expect(error).toBeInstanceOf(GenerationBudgetExceededError);
-    expect(error.aggregate.attemptCount).toBe(3);
-    expect(error.aggregate.retryCount).toBe(2);
-    expect(provider.generate).toHaveBeenCalledTimes(3);
+    expect(error.aggregate.attemptCount).toBe(4);
+    expect(error.aggregate.retryCount).toBe(0);
+    expect(provider.generate).toHaveBeenCalledTimes(4);
   });
 
   it("accounts paid wrong-count usage before retrying and keeps observed cost separate from preflight ceiling", async () => {
@@ -265,7 +270,7 @@ describe("generation orchestrator", () => {
     });
   });
 
-  it("does not retry or start another chunk after caller cancellation", async () => {
+  it("does not retry after caller cancellation and aborts every active chunk", async () => {
     const controller = new AbortController();
     const provider = providerFrom(
       (request) =>
@@ -285,8 +290,8 @@ describe("generation orchestrator", () => {
     const error = await settled;
 
     expect(error).toBeInstanceOf(GenerationCancelledError);
-    expect(error.aggregate.attemptCount).toBe(1);
+    expect(error.aggregate.attemptCount).toBe(4);
     expect(error.aggregate.retryCount).toBe(0);
-    expect(provider.generate).toHaveBeenCalledOnce();
+    expect(provider.generate).toHaveBeenCalledTimes(4);
   });
 });

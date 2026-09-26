@@ -14,27 +14,27 @@ const accuracyValue = overview ? `${overview.overall_accuracy_percent.toFixed(1)
 
 const accuracyAccent =
   overview && overview.overall_accuracy_percent >= 70
-    ? "text-green-400"
+    ? "text-success"
     : overview && overview.overall_accuracy_percent >= 40
-      ? "text-yellow-400"
-      : "text-red-400";
+      ? "text-warning"
+      : "text-destructive";
 ---
 
 <section aria-labelledby="stats-overview-heading">
-  <h2 id="stats-overview-heading" class="mb-4 text-lg font-semibold text-white/80">Twoje statystyki</h2>
+  <h2 id="stats-overview-heading" class="mb-4 text-lg font-semibold text-foreground">Twoje statystyki</h2>
 
   {
     overview === null ? (
       <div
         role="alert"
-        class="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+        class="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
       >
         <span aria-hidden="true">⚠</span>
         Nie udało się załadować statystyk.{" "}
         <button
           type="button"
           onclick="window.location.reload()"
-          class="ml-auto underline hover:no-underline focus-visible:outline-none"
+          class="ml-auto rounded-sm underline underline-offset-4 hover:no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           Odśwież stronę
         </button>
@@ -45,14 +45,14 @@ const accuracyAccent =
           <TrendingUp slot="icon" class="size-5" />
         </StatCard>
 
-        <StatCard value={String(overview.total_sessions_completed)} label="Ukończone sesje" accent="text-blue-300">
+        <StatCard value={String(overview.total_sessions_completed)} label="Ukończone sesje">
           <Trophy slot="icon" class="size-5" />
         </StatCard>
 
         <StatCard
           value={String(overview.flagged_questions_pending)}
           label="Do przejrzenia"
-          accent={overview.flagged_questions_pending > 0 ? "text-yellow-400" : "text-white/60"}
+          accent={overview.flagged_questions_pending > 0 ? "text-warning" : "text-foreground"}
         >
           <Flag slot="icon" class="size-5" />
         </StatCard>

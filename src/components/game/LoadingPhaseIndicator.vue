@@ -34,13 +34,19 @@ const estimatedRemaining = computed(() => {
   <div class="space-y-4">
     <p class="text-lg font-medium text-foreground">{{ phaseLabel }}</p>
 
+    <p class="text-sm text-muted-foreground">Etap {{ phaseIndex + 1 }} z {{ PHASE_ORDER.length }}</p>
+
     <div class="flex items-center justify-center gap-2" aria-hidden="true">
       <span
         v-for="(_, i) in PHASE_ORDER"
         :key="i"
-        class="h-2 w-2 rounded-full transition-all duration-500"
+        class="h-2 w-2 rounded-full motion-safe:transition-all motion-safe:duration-500"
         :class="[
-          i === phaseIndex ? 'scale-125 animate-pulse bg-primary' : i < phaseIndex ? 'bg-primary/60' : 'bg-muted',
+          i === phaseIndex
+            ? 'scale-125 bg-primary motion-safe:animate-pulse'
+            : i < phaseIndex
+              ? 'bg-primary/60'
+              : 'bg-muted',
         ]"
       />
     </div>

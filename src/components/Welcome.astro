@@ -1,108 +1,55 @@
 ---
-import LibBadge from "@/components/ui/LibBadge.astro";
 import Topbar from "@/components/Topbar.astro";
-import pkg from "../../package.json";
-import prettierPkg from "prettier/package.json";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-const ver = (v: string) => v.replace(/[\^~]/, "");
-const astroVersion = ver(pkg.dependencies.astro);
-const vueVersion = ver(pkg.dependencies.vue);
-const tailwindVersion = ver(pkg.dependencies.tailwindcss);
-const typescriptVersion = ver(pkg.devDependencies.typescript);
-const eslintVersion = ver(pkg.devDependencies.eslint);
-const prettierVersion = prettierPkg.version;
-const supabaseVersion = ver(pkg.dependencies["@supabase/supabase-js"]);
+const { user } = Astro.locals;
+const actionHref = user ? "/dashboard" : "/auth/signup";
+const actionLabel = user ? "Przejdź do panelu" : "Załóż konto";
 ---
 
-<div
-  class="relative w-full mx-auto min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-4 sm:p-8"
->
-  <Topbar />
-  <div
-    class="relative max-w-4xl mx-auto backdrop-blur-xl bg-gradient-to-b from-white/10 to-white/5 rounded-2xl shadow-2xl p-8 text-white border border-white/10"
-  >
-    <div class="space-y-8">
-      <div class="text-center">
-        <h1
-          class="text-6xl font-bold mb-4 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200 text-transparent bg-clip-text drop-shadow-lg"
-        >
-          Witaj w 10xDevs Astro Starter!
+<div class="min-h-screen bg-background px-4 py-6 sm:px-8">
+  <div class="mx-auto max-w-6xl">
+    <Topbar />
+
+    <main
+      class="grid min-h-[calc(100vh-8rem)] items-center gap-10 py-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:gap-16"
+    >
+      <div class="max-w-2xl">
+        <p class="mb-5 text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">VARtownik</p>
+        <h1 class="text-4xl font-bold leading-tight tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+          Trening wiedzy piłkarskiej
         </h1>
-        <p class="text-xl text-blue-100/90 drop-shadow-md">
-          Ten projekt został zbudowany w oparciu o nowoczesny stack technologiczny:
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
+          Sprawdź swoją wiedzę w quizie o piłce nożnej i zobacz postępy po rozegranych sesjach.
         </p>
+        <a href={actionHref} class={cn(buttonVariants({ size: "lg" }), "mt-8 w-full sm:w-auto")}>
+          {actionLabel}
+        </a>
       </div>
 
-      <div class="flex flex-col gap-6 max-w-2xl mx-auto">
-        <div class="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-          <h2
-            class="text-2xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200"
+      <aside class="grid gap-4 sm:grid-cols-2 lg:grid-cols-1" aria-label="Co znajdziesz w VARtowniku">
+        <section class="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <span
+            class="mb-5 flex size-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
+            aria-hidden="true">01</span
           >
-            Core
-          </h2>
-          <ul class="space-y-3">
-            <li class="flex items-center space-x-3">
-              <LibBadge name="Astro" version={astroVersion} />
-              <span class="text-blue-100/90">- Metaframework do aplikacji webowych</span>
-            </li>
-            <li class="flex items-center space-x-3">
-              <LibBadge name="Vue" version={vueVersion} />
-              <span class="text-blue-100/90">- Biblioteka UI do komponentów interaktywnych</span>
-            </li>
-            <li class="flex items-center space-x-3">
-              <LibBadge name="TypeScript" version={typescriptVersion} />
-              <span class="text-blue-100/90">- Typowanie statyczne</span>
-            </li>
-            <li class="flex items-center space-x-3">
-              <LibBadge name="Supabase" version={supabaseVersion} />
-              <span class="text-blue-100/90">- Autentykacja i przechowywanie danych</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-          <h2
-            class="text-2xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200"
+          <h2 class="text-xl font-semibold text-card-foreground">Quiz piłkarski</h2>
+          <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+            Odpowiadaj na pytania i sprawdzaj, ile wiesz o futbolu.
+          </p>
+        </section>
+        <section class="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <span
+            class="mb-5 flex size-10 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
+            aria-hidden="true">02</span
           >
-            Stylowanie
-          </h2>
-          <ul class="space-y-3">
-            <li class="flex items-center space-x-3">
-              <LibBadge name="Tailwind CSS" version={tailwindVersion} />
-              <span class="text-blue-100/90">- Utility-first CSS framework</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-lg rounded-xl p-6 border border-white/10">
-          <h2
-            class="text-2xl font-semibold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200"
-          >
-            Statyczna analiza kodu
-          </h2>
-          <ul class="space-y-3">
-            <li class="flex items-center space-x-3">
-              <LibBadge name="ESLint" version={eslintVersion} />
-              <span class="text-blue-100/90">- Lintowanie kodu</span>
-            </li>
-            <li class="flex items-center space-x-3">
-              <LibBadge name="Prettier" version={prettierVersion} />
-              <span class="text-blue-100/90">- Formatowanie kodu</span>
-            </li>
-            <li class="flex items-center space-x-3">
-              <LibBadge name="Husky i Lint-staged" />
-              <span class="text-blue-100/90">- Automatyczna analiza kodu przed commitowaniem</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <p class="text-lg text-center text-blue-100/90 mt-8 leading-relaxed">
-        Starter zawiera wszystko, czego potrzebujesz do rozpoczęcia tworzenia <br class="hidden sm:block" />
-        <span class="font-semibold bg-gradient-to-r from-blue-200 to-purple-200 text-transparent bg-clip-text"
-          >nowoczesnych aplikacji webowych!</span
-        >
-      </p>
-    </div>
+          <h2 class="text-xl font-semibold text-card-foreground">Podgląd postępów</h2>
+          <p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+            W panelu zobaczysz swoje statystyki i ostatnie sesje.
+          </p>
+        </section>
+      </aside>
+    </main>
   </div>
 </div>

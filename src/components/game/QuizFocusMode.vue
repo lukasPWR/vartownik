@@ -180,8 +180,11 @@ onMounted(() => {
         />
       </div>
 
-      <div v-else class="flex flex-col items-center gap-2">
-        <div class="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+      <div v-else role="status" class="flex flex-col items-center gap-2">
+        <div
+          aria-hidden="true"
+          class="h-8 w-8 rounded-full border-4 border-muted border-t-primary motion-safe:animate-spin"
+        />
         <p class="text-sm text-muted-foreground">Ładowanie pytania…</p>
       </div>
     </main>

@@ -5,15 +5,15 @@ interface Props {
   accent?: string;
 }
 
-const { value, label, accent = "text-white" } = Astro.props;
+const { value, label, accent = "text-foreground" } = Astro.props;
 ---
 
 <div
-  class="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm"
+  class="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 text-card-foreground shadow-sm"
   role="figure"
   aria-label={label}
 >
-  <div class="flex items-center gap-2 text-white/60">
+  <div class="flex items-center gap-2 text-muted-foreground">
     <span class="size-5 shrink-0" aria-hidden="true">
       <slot name="icon" />
     </span>

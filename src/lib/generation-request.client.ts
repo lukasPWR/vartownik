@@ -9,6 +9,7 @@ export type GenerationErrorType =
   | "deadline"
   | "cancelled"
   | "rate_limit"
+  | "transport"
   | "provider"
   | "parse"
   | "persistence"
@@ -113,12 +114,16 @@ export function createGenerationRequestClient(
     activeController = controller;
     activeAbortReason = null;
 
-    const timeout = dependencies.setTimeout(() => {
-      if (activeController === controller) {
-        activeAbortReason = "timeout";
-        controller.abort();
-      }
-    }, dependencies.timeoutMs);
+    const timeout = dependencies.setTimeout.call(
+      globalThis,
+      () => {
+        if (activeController === controller) {
+          activeAbortReason = "timeout";
+          controller.abort();
+        }
+      },
+      dependencies.timeoutMs
+    );
 
     try {
       const response = await dependencies.fetch("/api/generation-batches", {
@@ -162,7 +167,7 @@ export function createGenerationRequestClient(
 
       throw error;
     } finally {
-      dependencies.clearTimeout(timeout);
+      dependencies.clearTimeout.call(globalThis, timeout);
       if (activeController === controller) {
         activeController = null;
         activeAbortReason = null;
@@ -173,15 +178,18 @@ export function createGenerationRequestClient(
   async function requestWithTransportReplay(key: string): Promise<GenerationRequestResult> {
     try {
       return await requestOnce(key);
-    } catch {
+    } catch (firstError) {
       try {
         return await requestOnce(key);
-      } catch {
+      } catch (retryError) {
+        const detail = [firstError, retryError]
+          .map((error) => (error instanceof Error ? `${error.name}: ${error.message}` : String(error)))
+          .join("; ");
         return {
           kind: "failure",
-          errorType: "provider",
+          errorType: "transport",
           code: "transport_failed",
-          message: "Generation service could not be reached.",
+          message: import.meta.env.DEV ? detail : "Generation endpoint could not be reached.",
         };
       }
     }

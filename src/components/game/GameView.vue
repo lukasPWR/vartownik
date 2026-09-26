@@ -28,6 +28,8 @@ const generationPhase = ref<GenerationPhase>("initiating");
 const batchId = ref<string | null>(null);
 const hasError = ref<boolean>(false);
 const errorType = ref<GenerationErrorType | null>(null);
+const errorCode = ref<string | null>(null);
+const errorDetail = ref<string | null>(null);
 const pollingIntervalId = ref<ReturnType<typeof setInterval> | null>(null);
 const generationStartedAt = ref<number>(Date.now());
 const now = ref<number>(Date.now());
@@ -94,6 +96,7 @@ async function pollBatchStatus(): Promise<void> {
     stopPolling();
     hasError.value = true;
     errorType.value = "deadline";
+    errorCode.value = "poll_timeout";
     return;
   }
 
@@ -107,10 +110,12 @@ async function pollBatchStatus(): Promise<void> {
         stopPolling();
         hasError.value = true;
         errorType.value = "parse";
+        errorCode.value = `poll_http_${res.status}`;
       } else {
         stopPolling();
         hasError.value = true;
         errorType.value = "provider";
+        errorCode.value = `poll_http_${res.status}`;
       }
       return;
     }
@@ -124,12 +129,14 @@ async function pollBatchStatus(): Promise<void> {
       stopPolling();
       hasError.value = true;
       errorType.value = generationErrorTypeFromCode(batch.failure_code);
+      errorCode.value = batch.failure_code;
     }
     // pending → keep polling
   } catch {
     stopPolling();
     hasError.value = true;
     errorType.value = "provider";
+    errorCode.value = "poll_transport_failed";
   }
 }
 
@@ -201,6 +208,8 @@ async function loadRound(position: number): Promise<void> {
 async function startGeneration(isRetry = false): Promise<void> {
   hasError.value = false;
   errorType.value = null;
+  errorCode.value = null;
+  errorDetail.value = null;
   batchId.value = null;
   generationPhase.value = "initiating";
   generationStartedAt.value = Date.now();
@@ -223,6 +232,8 @@ async function startGeneration(isRetry = false): Promise<void> {
 
   hasError.value = true;
   errorType.value = result.errorType;
+  errorCode.value = result.code;
+  errorDetail.value = result.errorType === "transport" ? result.message : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,6 +318,8 @@ onUnmounted(() => {
       :phase="generationPhase"
       :has-error="hasError"
       :error-type="errorType"
+      :error-code="errorCode"
+      :error-detail="errorDetail"
       :elapsed-seconds="elapsedSeconds"
       @cancel="handleCancel"
       @retry="handleRetry"

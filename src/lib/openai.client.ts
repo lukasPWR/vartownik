@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { ZodError, type ZodType } from "zod";
 
-import { AiParseError, AiProviderError, GenerationAdmissionError } from "@/lib/errors";
+import { AiParseError, AiProviderError, GenerationAdmissionError, GenerationDeadlineError } from "@/lib/errors";
 import type { AiMessage } from "@/lib/prompts/quiz-generation.v1";
 import { GENERATION_MODEL_PRICING, GENERATION_POLICY } from "@/lib/services/generation-policy";
 import type {
@@ -139,6 +139,10 @@ async function requestOpenAI<T>(
 
     if (error instanceof ZodError || error instanceof SyntaxError) {
       throw new AiParseError("OpenAI returned a structurally invalid response.");
+    }
+
+    if (error instanceof OpenAI.APIConnectionTimeoutError) {
+      throw new GenerationDeadlineError("OpenAI request exceeded the remaining generation deadline.");
     }
 
     if (error instanceof OpenAI.APIError) {

@@ -4,19 +4,17 @@ import SignInForm from "@/components/auth/SignInForm.vue";
 ---
 
 <Layout title="Logowanie">
-  <main
-    class="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 p-4"
-  >
-    <div class="w-full max-w-sm backdrop-blur-xl bg-white/10 rounded-2xl border border-white/10 p-8 text-white">
-      <h1
-        class="text-2xl font-bold mb-6 text-center bg-gradient-to-r from-blue-200 to-purple-200 text-transparent bg-clip-text"
-      >
-        Zaloguj się
-      </h1>
+  <main class="flex min-h-screen items-center justify-center bg-background px-4 py-12">
+    <div class="w-full max-w-sm rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm sm:p-8">
+      <h1 class="mb-6 text-center text-2xl font-bold">Zaloguj się</h1>
       <SignInForm client:load />
-      <p class="mt-6 text-center text-sm text-blue-100/60">
+      <p class="mt-6 text-center text-sm text-muted-foreground">
         Nie masz konta?
-        <a href="/auth/signup" class="text-purple-300 hover:underline">Zarejestruj się</a>
+        <a
+          href="/auth/signup"
+          class="rounded-sm font-medium text-foreground underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >Zarejestruj się</a
+        >
       </p>
     </div>
   </main>

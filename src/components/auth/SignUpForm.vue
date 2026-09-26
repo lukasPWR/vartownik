@@ -96,9 +96,9 @@ async function handleSubmit(): Promise<void> {
 </script>
 
 <template>
-  <form @submit.prevent="handleSubmit" novalidate aria-label="Formularz rejestracji">
+  <form @submit.prevent="handleSubmit" novalidate aria-label="Formularz rejestracji" :aria-busy="isSubmitting">
     <div class="mb-4">
-      <label for="signup-email" class="block text-sm font-medium text-blue-100 mb-1">E-mail</label>
+      <label for="signup-email" class="mb-1 block text-sm font-medium text-foreground">E-mail</label>
       <Input
         id="signup-email"
         ref="emailInputRef"
@@ -107,17 +107,16 @@ async function handleSubmit(): Promise<void> {
         autocomplete="email"
         :aria-describedby="errors.email ? 'signup-email-error' : undefined"
         :aria-invalid="!!errors.email"
-        class="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-purple-400 focus:ring-purple-400"
         placeholder="twoj@email.com"
         @blur="validateEmail"
       />
-      <p v-if="errors.email" id="signup-email-error" role="alert" class="mt-1 text-xs text-red-400">
+      <p v-if="errors.email" id="signup-email-error" role="alert" class="mt-1 text-xs text-destructive">
         {{ errors.email }}
       </p>
     </div>
 
     <div class="mb-4">
-      <label for="signup-password" class="block text-sm font-medium text-blue-100 mb-1">Hasło</label>
+      <label for="signup-password" class="mb-1 block text-sm font-medium text-foreground">Hasło</label>
       <Input
         id="signup-password"
         v-model="form.password"
@@ -127,20 +126,19 @@ async function handleSubmit(): Promise<void> {
           errors.password ? 'signup-password-error' : form.password ? 'signup-password-strength' : undefined
         "
         :aria-invalid="!!errors.password"
-        class="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-purple-400 focus:ring-purple-400"
         placeholder="••••••••"
         @blur="validatePassword"
       />
       <div v-if="form.password" id="signup-password-strength" class="mt-2">
         <PasswordStrengthIndicator :strength="passwordStrength" />
       </div>
-      <p v-if="errors.password" id="signup-password-error" role="alert" class="mt-1 text-xs text-red-400">
+      <p v-if="errors.password" id="signup-password-error" role="alert" class="mt-1 text-xs text-destructive">
         {{ errors.password }}
       </p>
     </div>
 
     <div class="mb-6">
-      <label for="signup-confirm-password" class="block text-sm font-medium text-blue-100 mb-1">
+      <label for="signup-confirm-password" class="mb-1 block text-sm font-medium text-foreground">
         Potwierdź hasło
       </label>
       <Input
@@ -150,11 +148,10 @@ async function handleSubmit(): Promise<void> {
         autocomplete="new-password"
         :aria-describedby="errors.confirmPassword ? 'signup-confirm-error' : undefined"
         :aria-invalid="!!errors.confirmPassword"
-        class="bg-white/10 border-white/20 text-white placeholder:text-white/40 focus:border-purple-400 focus:ring-purple-400"
         placeholder="••••••••"
         @blur="validateConfirmPassword"
       />
-      <p v-if="errors.confirmPassword" id="signup-confirm-error" role="alert" class="mt-1 text-xs text-red-400">
+      <p v-if="errors.confirmPassword" id="signup-confirm-error" role="alert" class="mt-1 text-xs text-destructive">
         {{ errors.confirmPassword }}
       </p>
     </div>
@@ -163,7 +160,7 @@ async function handleSubmit(): Promise<void> {
       v-if="errors.server"
       role="alert"
       aria-live="assertive"
-      class="mb-4 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+      class="mb-4 flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -183,14 +180,10 @@ async function handleSubmit(): Promise<void> {
       {{ errors.server }}
     </div>
 
-    <Button
-      type="submit"
-      :disabled="isSubmitting"
-      class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold disabled:opacity-60"
-    >
+    <Button type="submit" :disabled="isSubmitting" class="w-full">
       <span v-if="isSubmitting" class="flex items-center gap-2">
         <svg
-          class="animate-spin h-4 w-4"
+          class="h-4 w-4 motion-safe:animate-spin"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
