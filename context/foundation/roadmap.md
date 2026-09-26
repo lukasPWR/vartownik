@@ -30,7 +30,7 @@ VARtownik ma domknac istniejacy symulator pilkarskiego quizu tak, aby prywatny u
 | ID | Change ID | Wynik (uzytkownik moze...) | Wymagania wstepne | Odwolania do PRD | Status |
 |---|---|---|---|---|---|
 | F-01 | round-flow-contract | (fundament) przeplyw rundy ma minimalna umowe potrzebna do pobrania rundy, zapisania prob i ujawnienia odpowiedzi po zakonczeniu rundy | - | US-01, FR-006, FR-007, FR-008, FR-010 | zrobione |
-| F-02 | question-status-contract | (fundament) statusy pytan maja jednoznaczna semantyke dla flagowania, wykluczania i rozwiazywania bledow | - | US-02, US-03, FR-009, FR-015, FR-016 | gotowy |
+| F-02 | question-status-contract | (fundament) statusy pytan maja jednoznaczna semantyke dla flagowania, wykluczania i rozwiazywania bledow | - | US-02, US-03, FR-009, FR-015, FR-016 | implemented |
 | F-03 | deployment-runtime-checkpoint | (fundament) aktualny cel uruchomieniowy jest sprawdzony przed zmianami, ktore dotykaja auth, API i SSR | - | FR-001, FR-002, Guardrails | gotowy |
 | S-01 | round-summary-self-assessment | uzytkownik po rundzie widzi pytania, poprawne odpowiedzi i swoje notatki, oznacza wszystkie pytania i zapisuje wynik rundy | F-01 | US-01, FR-004, FR-005, FR-006, FR-007, FR-008, FR-010 | proponowany |
 | S-02 | summary-question-flagging | uzytkownik flaguje podejrzane pytanie bez opuszczania podsumowania, a pytanie nie wraca do kolejnych quizow | S-01, F-02 | US-02, FR-009, FR-016 | proponowany |
@@ -87,7 +87,7 @@ Fundamenty ponizej zakladaja, ze te elementy sa obecne i NIE tworza ich ponownie
 - **Blokady:** -
 - **Niewiadome:** Czy istniejace statusy `flagged` i `needs_review` reprezentuja dwa rozne stany, czy jeden z nich powinien byc uzywany jako stan podejrzanego pytania? - Wlasciciel: zespol. Blokada: nie.
 - **Ryzyko:** Niejednoznaczne statusy moga sprawic, ze pytanie oznaczone w grze nie pojawi sie w odpowiedniej zakladce panelu albo nie zostanie wykluczone z quizu.
-- **Status:** gotowy
+- **Status:** implemented
 
 ### F-03: Checkpoint runtime i wdrozenia
 
