@@ -407,10 +407,10 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [x] 4.1 Odrzucić anonimowe i błędne admission przed service oraz providerem
-- [x] 4.2 Udowodnić idempotency key, pending replay i abort klienta bez płatnych wywołań
-- [x] 4.3 Rozróżnić mapowanie conflict, budget, deadline, cancel, provider, parse i persistence failure
-- [x] 4.4 Uruchomić pełne bramy i opisać dostarczony wzorzec w test-plan cookbook
+- [x] 4.1 Odrzucić anonimowe i błędne admission przed service oraz providerem — `61a0871`
+- [x] 4.2 Udowodnić idempotency key, pending replay i abort klienta bez płatnych wywołań — `61a0871`
+- [x] 4.3 Rozróżnić mapowanie conflict, budget, deadline, cancel, provider, parse i persistence failure — `61a0871`
+- [x] 4.4 Uruchomić pełne bramy i opisać dostarczony wzorzec w test-plan cookbook — `61a0871`
 
 #### Manual
 
