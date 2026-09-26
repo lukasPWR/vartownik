@@ -6,14 +6,14 @@ export class RateLimitError extends Error {
   }
 }
 
-/** Upstream OpenRouter HTTP error (non-2xx response or network failure). */
-export class OpenRouterError extends Error {
+/** Upstream AI provider HTTP error (non-2xx response or network failure). */
+export class AiProviderError extends Error {
   constructor(
     message: string,
     public readonly statusCode?: number
   ) {
     super(message);
-    this.name = "OpenRouterError";
+    this.name = "AiProviderError";
   }
 }
 
@@ -70,5 +70,13 @@ export class BadRequestError extends Error {
   constructor(message = "Bad request.") {
     super(message);
     this.name = "BadRequestError";
+  }
+}
+
+/** Request payload or referenced data is structurally invalid for the requested operation. */
+export class UnprocessableEntityError extends Error {
+  constructor(message = "Unprocessable entity.") {
+    super(message);
+    this.name = "UnprocessableEntityError";
   }
 }

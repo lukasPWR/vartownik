@@ -7,7 +7,7 @@ import {
   listGenerationBatches,
   ListGenerationBatchesQuerySchema,
 } from "@/lib/services/generation-batch.service";
-import { AiParseError, OpenRouterError, RateLimitError } from "@/lib/errors";
+import { AiParseError, AiProviderError, RateLimitError } from "@/lib/errors";
 
 export const prerender = false;
 
@@ -17,7 +17,7 @@ export const prerender = false;
 
 const CreateGenerationBatchSchema = z.object({
   model: z.string().min(1).max(100),
-  provider: z.literal("google"),
+  provider: z.literal("openai"),
   prompt_version: z.string().regex(/^v\d+$/, "prompt_version must match pattern v<number> (e.g. v1)"),
   requested_questions_count: z.number().int().positive().max(200).default(40),
 });
@@ -90,7 +90,7 @@ export const POST: APIRoute = async (context) => {
       });
     }
 
-    if (error instanceof OpenRouterError) {
+    if (error instanceof AiProviderError) {
       // TODO: restore generic message before production
       return new Response(JSON.stringify({ error: error.message }), {
         status: error.statusCode === 429 ? 429 : 502,

@@ -3,7 +3,7 @@ project: VARtownik
 version: 1
 status: draft
 created: 2026-06-09
-updated: 2026-06-09
+updated: 2026-06-13
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
@@ -29,7 +29,7 @@ VARtownik ma domknac istniejacy symulator pilkarskiego quizu tak, aby prywatny u
 
 | ID | Change ID | Wynik (uzytkownik moze...) | Wymagania wstepne | Odwolania do PRD | Status |
 |---|---|---|---|---|---|
-| F-01 | round-flow-contract | (fundament) przeplyw rundy ma minimalna umowe potrzebna do pobrania rundy, zapisania prob i ujawnienia odpowiedzi po zakonczeniu rundy | - | US-01, FR-006, FR-007, FR-008, FR-010 | gotowy |
+| F-01 | round-flow-contract | (fundament) przeplyw rundy ma minimalna umowe potrzebna do pobrania rundy, zapisania prob i ujawnienia odpowiedzi po zakonczeniu rundy | - | US-01, FR-006, FR-007, FR-008, FR-010 | zrobione |
 | F-02 | question-status-contract | (fundament) statusy pytan maja jednoznaczna semantyke dla flagowania, wykluczania i rozwiazywania bledow | - | US-02, US-03, FR-009, FR-015, FR-016 | gotowy |
 | F-03 | deployment-runtime-checkpoint | (fundament) aktualny cel uruchomieniowy jest sprawdzony przed zmianami, ktore dotykaja auth, API i SSR | - | FR-001, FR-002, Guardrails | gotowy |
 | S-01 | round-summary-self-assessment | uzytkownik po rundzie widzi pytania, poprawne odpowiedzi i swoje notatki, oznacza wszystkie pytania i zapisuje wynik rundy | F-01 | US-01, FR-004, FR-005, FR-006, FR-007, FR-008, FR-010 | proponowany |
@@ -74,7 +74,7 @@ Fundamenty ponizej zakladaja, ze te elementy sa obecne i NIE tworza ich ponownie
 - **Blokady:** -
 - **Niewiadome:** Czy zapis prob powinien pozostac oddzielony od zatwierdzenia rundy, czy zatwierdzenie rundy ma byc jedna operacja? - Wlasciciel: zespol. Blokada: nie.
 - **Ryzyko:** Bez tego fundamentu UI podsumowania moze powstac szybciej, ale nie bedzie mial stabilnej sciezki zapisu i odczytu.
-- **Status:** gotowy
+- **Status:** zrobione
 
 ### F-02: Minimalna umowa statusow pytan
 
@@ -207,4 +207,4 @@ Ta tabela to czyste przekazanie do Jira/Linear lub dowolnego backlogu opartego n
 
 ## Zrobione
 
-Brak wpisow. `/10x-archive` dodaje tutaj wpis i zmienia `Status` tego elementu na `done`, gdy zmiana, ktorej `Change ID` odpowiada elementowi mapy drogowej, zostanie zarchiwizowana.
+- F-01: `round-flow-contract` - minimalna umowa przeplywu rundy jest wdrozona i gotowa do kolejnych fragmentow.

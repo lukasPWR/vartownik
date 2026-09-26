@@ -59,8 +59,8 @@ const isTimerExpired = ref<boolean>(false);
 const POLLING_INTERVAL_MS = 3000;
 const MAX_GENERATION_TIMEOUT_MS = 50_000;
 const GENERATION_BATCH_COMMAND = {
-  model: "google/gemini-2.5-flash",
-  provider: "google",
+  model: "gpt-6-luna",
+  provider: "openai",
   prompt_version: "v1",
   requested_questions_count: 40,
 } as const;

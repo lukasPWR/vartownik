@@ -15,7 +15,7 @@ Current repo state: Astro 5 SSR app using `@astrojs/node`; target state is Astro
 
 ## Non-Negotiable Guardrails
 
-- `[ ]` Do not commit secrets. Use Cloudflare Worker secrets for `SUPABASE_URL`, `SUPABASE_KEY`, and `GOOGLE_API_KEY`.
+- `[ ]` Do not commit secrets. Use Cloudflare Worker secrets for `SUPABASE_URL`, `SUPABASE_KEY`, and `OPENAI_API_KEY`.
 - `[ ]` Treat `wrangler.jsonc` as the source of truth for Worker configuration. Avoid dashboard-only config drift.
 - `[ ]` Use Workers commands, not Pages commands. `wrangler deploy` is the deployment path for this plan.
 - `[ ]` Protect public preview URLs with Cloudflare Access before sharing them.
@@ -32,7 +32,7 @@ Current repo state: Astro 5 SSR app using `@astrojs/node`; target state is Astro
 - `[x]` Confirm Supabase production project exists.
 - `[x]` Confirm Supabase production migrations are applied. All 7 migrations confirmed applied to remote hosted Supabase via `npx supabase migration list` on 2026-06-04.
 - `[x]` Confirm GitHub repository is configured.
-- `[ ]` Confirm Google API keys have spending limits or quotas before deploying AI generation endpoints.
+- `[ ]` Confirm OpenAI project limits before deploying AI generation endpoints.
 - `[ ]` Confirm who owns manual gates: Cloudflare account access, Supabase dashboard changes, provider key rotation, and DNS/domain cutover.
 
 Support steps:
@@ -163,7 +163,7 @@ Known repo-specific compatibility checks:
   - Questions list/create/update/delete.
   - Dashboard stats endpoints.
 - `[ ]` Run AI smoke checks only with capped keys:
-  - One small Google generation request.
+  - One small OpenAI generation request.
   - Provider 4xx path returns a user-safe error.
   - Provider timeout path does not leave a permanently pending generation batch.
 
@@ -181,14 +181,14 @@ Support steps:
 - `[ ]` Set `CLOUDFLARE_ACCOUNT_ID` locally or in CI, not in source.
 - `[x]` Create the Worker configuration only after the adapter version gate is resolved.
 - `[x]` Keep sensitive values out of `wrangler.jsonc`; use Wrangler secrets.
-- `[x]` Create/set Worker secrets. Staging secrets set for `vartownik-staging`. **Important: `SUPABASE_URL` must be exactly `https://<ref>.supabase.co` — no trailing slash, no `/rest/v1` or any path suffix; wrong format causes `PGRST125` on all Supabase calls.**
+- `[ ]` Create/set Worker secrets. The new OpenAI secret still needs to be set for `vartownik-staging`. **Important: `SUPABASE_URL` must be exactly `https://<ref>.supabase.co` — no trailing slash, no `/rest/v1` or any path suffix; wrong format causes `PGRST125` on all Supabase calls.**
   - `SUPABASE_URL`
   - `SUPABASE_KEY`
-  - `GOOGLE_API_KEY`
-- `[x]` Recommended initial secret commands:
+  - `OPENAI_API_KEY`
+- `[ ]` Recommended initial secret commands:
   - `npx wrangler secret put SUPABASE_URL`
   - `npx wrangler secret put SUPABASE_KEY`
-  - `npx wrangler secret put GOOGLE_API_KEY`
+  - `npx wrangler secret put OPENAI_API_KEY`
 - `[x]` If using staging and production as separate Workers/environments, set secrets separately for each target. Staging secrets set; production secrets still required before Phase 6.
 - `[ ]` Avoid bulk secret upload from `.env.production` until the first manual secret setup is proven; it is easy to upload the wrong environment file.
 - `[ ]` Confirm required secrets cause deploy validation to fail when missing.
@@ -280,7 +280,7 @@ Support steps:
 - `[ ]` If local and hosted Postgres versions differ, align `supabase/config.toml` `[db].major_version` with the hosted project before relying on local migration tests.
 - `[ ]` If auth works locally but not online, inspect hosted Supabase Auth URL settings before changing application code.
 
-### Google
+### OpenAI
 
 - `[ ]` Set hard spend limits or quota controls before production deploy.
 - `[ ]` Keep provider keys separate between staging and production if possible.
@@ -413,7 +413,7 @@ Support steps:
 - `[ ]` Add a production incident checklist:
   - Check Cloudflare Worker status/logs.
   - Check Supabase status and auth settings.
-  - Check Google provider status and quotas.
+  - Check OpenAI provider status and project limits.
   - Check recent deployment version.
   - Roll back only after identifying whether the issue is code, secret, provider, or data-related.
 

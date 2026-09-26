@@ -1,8 +1,17 @@
 import type { SupabaseClientType } from "@/db/supabase.client";
-import { BadRequestError, BatchNotFoundError, BatchNotSuccessError, NotFoundError } from "@/lib/errors";
+import { z } from "zod";
+
+import {
+  BadRequestError,
+  BatchNotFoundError,
+  BatchNotSuccessError,
+  NotFoundError,
+  UnprocessableEntityError,
+} from "@/lib/errors";
 import type {
   CreateSessionCommand,
   RoundSummaryDTO,
+  RoundQuestionGroupDTO,
   ScoreSummaryDTO,
   SessionCreatedDTO,
   SessionDetailDTO,
@@ -10,6 +19,43 @@ import type {
   SessionsResponseDTO,
   SessionStatus,
 } from "@/types";
+
+const SESSION_TOTAL_ROUNDS = 4;
+const SESSION_QUESTIONS_PER_ROUND = 10;
+
+const BatchRoundSchema = z.object({
+  position: z.number().int().positive(),
+  question_ids: z.array(z.string().uuid()),
+});
+
+const BatchResponsePayloadSchema = z.object({
+  rounds: z.array(BatchRoundSchema).length(SESSION_TOTAL_ROUNDS),
+});
+
+function validateBatchRoundsPayload(payload: unknown): RoundQuestionGroupDTO[] {
+  const parsed = BatchResponsePayloadSchema.safeParse(payload);
+
+  if (!parsed.success) {
+    throw new UnprocessableEntityError("Generation batch is missing a complete rounds mapping.");
+  }
+
+  const positions = parsed.data.rounds.map((round) => round.position).sort((left, right) => left - right);
+  const expectedPositions = Array.from({ length: SESSION_TOTAL_ROUNDS }, (_, index) => index + 1);
+
+  const hasExpectedPositions = positions.every((position, index) => position === expectedPositions[index]);
+  const hasExpectedQuestionCount = parsed.data.rounds.every(
+    (round) => round.question_ids.length === SESSION_QUESTIONS_PER_ROUND
+  );
+  const hasUniqueQuestionIds = parsed.data.rounds.every(
+    (round) => new Set(round.question_ids).size === round.question_ids.length
+  );
+
+  if (!hasExpectedPositions || !hasExpectedQuestionCount || !hasUniqueQuestionIds) {
+    throw new UnprocessableEntityError("Generation batch rounds mapping is incomplete or inconsistent.");
+  }
+
+  return parsed.data.rounds.sort((left, right) => left.position - right.position);
+}
 
 // ---------------------------------------------------------------------------
 // List sessions
@@ -96,9 +142,9 @@ export async function listSessions(
  *
  * Steps:
  *  1. Fetch the generation batch — returns 404 if missing or owned by another user.
- *  2. Validate batch status is "success" — throws BatchNotSuccessError otherwise.
+ *  2. Validate batch status is "success" and contains a complete rounds mapping.
  *  3. Insert the new session row (DB trigger auto-abandons any in_progress sessions).
- *  4. Fetch the rounds created by the DB for this session.
+ *  4. Materialize round rows for the session from the generation batch payload.
  *  5. Compose and return SessionCreatedDTO.
  */
 export async function createSession(
@@ -111,7 +157,7 @@ export async function createSession(
   // Step 1: Fetch generation batch scoped to the current user (prevents IDOR)
   const { data: batch, error: batchError } = await supabase
     .from("generation_batches")
-    .select("id, status")
+    .select("id, status, response_payload")
     .eq("id", generation_batch_id)
     .eq("user_id", userId)
     .single();
@@ -124,6 +170,8 @@ export async function createSession(
   if (batch.status !== "success") {
     throw new BatchNotSuccessError();
   }
+
+  const batchRounds = validateBatchRoundsPayload(batch.response_payload);
 
   // Step 3: Insert new session — DB trigger handles abandoning previous in_progress sessions
   const { data: session, error: insertError } = await supabase
@@ -142,24 +190,46 @@ export async function createSession(
     throw new Error("Failed to create session.");
   }
 
-  // Step 4: Fetch rounds created for this session
+  const roundRows = batchRounds.map((round) => ({
+    session_id: session.id,
+    position: round.position,
+    status: "in_progress" as const,
+  }));
+
+  // Step 4: Materialize session rounds from the batch payload
   const { data: rounds, error: roundsError } = await supabase
     .from("rounds")
-    .select("id, position, status")
-    .eq("session_id", session.id)
-    .order("position", { ascending: true });
+    .insert(roundRows)
+    .select("id, position, status");
 
   if (roundsError || !rounds) {
-    console.error("[sessions.service] Failed to fetch rounds", { userId, sessionId: session.id, roundsError });
-    throw new Error("Failed to fetch session rounds.");
+    console.error("[sessions.service] Failed to materialize rounds", {
+      userId,
+      sessionId: session.id,
+      generation_batch_id,
+      roundsError,
+    });
+
+    const { error: rollbackError } = await supabase.from("sessions").delete().eq("id", session.id);
+    if (rollbackError) {
+      console.error("[sessions.service] Failed to roll back session after rounds insert error", {
+        userId,
+        sessionId: session.id,
+        rollbackError,
+      });
+    }
+
+    throw new Error("Failed to materialize session rounds.");
   }
 
   // Step 5: Compose response DTO
-  const roundsSummary: RoundSummaryDTO[] = rounds.map((r) => ({
-    id: r.id,
-    position: r.position,
-    status: r.status,
-  }));
+  const roundsSummary: RoundSummaryDTO[] = rounds
+    .sort((left, right) => left.position - right.position)
+    .map((r) => ({
+      id: r.id,
+      position: r.position,
+      status: r.status,
+    }));
 
   return {
     id: session.id,
