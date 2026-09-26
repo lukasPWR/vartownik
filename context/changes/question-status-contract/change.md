@@ -10,3 +10,5 @@ archived_at: null
 ## Notes
 
 F-02 [roadmap.md](context/foundation/roadmap.md)
+
+- 2026-09-26: Użytkownik potwierdził, że testy ręczne przeszły.
