@@ -33,6 +33,8 @@ Nowe pytanie ma `active`; zgłoszenie daje `flagged`; jawne rozwiązanie, także
 
 **Poza zakresem:** UI flagowania z podsumowania, ekran zarządzania pytaniami, ręczne dodawanie oraz nowy mechanizm losowania z banku. Te funkcje mają własne fragmenty roadmapy.
 
+**Podział odpowiedzialności:** F-02 dostarcza migrację `needs_review → flagged`, reguły przejść, odczyty kolejki i blokadę nowej sesji ze zgłoszonym lub zarchiwizowanym pytaniem. S-02 doda flagowanie z podsumowania rundy. S-04 doda ekran zarządzania, kartę zgłoszeń oraz jawne akcje rozwiązywania i przywracania. S-05 doda formularz ręcznego pytania, które zaczyna jako `active`. Wbrew starszemu zapisowi US-03 rozwiązanie zgłoszenia ustawia `verified`, a przywrócenie `archived` wymaga osobnej akcji i ustawia `active`.
+
 ## Architektura / Podejście
 
 PostgreSQL egzekwuje przejścia i atomową weryfikację batcha przy tworzeniu sesji. Serwis i API mapują reguły na czytelne odpowiedzi HTTP. Dashboard i lista pytań używają `flagged` jako jedynego statusu nierozwiązanego zgłoszenia.

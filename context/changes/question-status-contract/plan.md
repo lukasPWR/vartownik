@@ -202,9 +202,9 @@ Migracja danych jest jednokierunkowa: `needs_review` staje się `flagged`, bez u
 
 #### Automated
 
-- [x] 2.1 Test serwisu i API dla przejść, uwierzytelnienia i mapowania błędów
-- [x] 2.2 Test bazy blokady nowej sesji dla wykluczonych pytań
-- [x] 2.3 Uruchomić `npm test`, `npm run lint` i `npm run build`
+- [x] 2.1 Test serwisu i API dla przejść, uwierzytelnienia i mapowania błędów — 46990a4
+- [x] 2.2 Test bazy blokady nowej sesji dla wykluczonych pytań — 46990a4
+- [x] 2.3 Uruchomić `npm test`, `npm run lint` i `npm run build` — 46990a4
 
 #### Manual
 
@@ -214,8 +214,8 @@ Migracja danych jest jednokierunkowa: `needs_review` staje się `flagged`, bez u
 
 #### Automated
 
-- [ ] 3.1 Test zgodności licznika i paginowanej listy `flagged`
-- [ ] 3.2 Uruchomić `npm test`, `npm run lint` i `npm run build`
+- [x] 3.1 Test zgodności licznika i paginowanej listy `flagged`
+- [x] 3.2 Uruchomić `npm test`, `npm run lint` i `npm run build`
 
 #### Manual
 
