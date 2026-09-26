@@ -3,7 +3,7 @@ project: VARtownik
 version: 1
 status: draft
 created: 2026-06-09
-updated: 2026-06-13
+updated: 2026-09-26
 prd_version: 1
 main_goal: speed
 top_blocker: decisions
