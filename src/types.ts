@@ -7,12 +7,15 @@
  */
 
 import type { Tables, Enums } from "@/db/database.types";
+import type { CanonicalQuestionStatus } from "@/lib/question-status";
 
 // ---------------------------------------------------------------------------
 // Re-exported DB enum aliases — use these instead of raw string literals
 // ---------------------------------------------------------------------------
 
 export type QuestionStatus = Enums<"question_status_enum">;
+/** Status accepted by write APIs; the legacy database alias is read-only. */
+export type WritableQuestionStatus = CanonicalQuestionStatus;
 export type GeneratedType = Enums<"generated_type_enum">;
 export type SessionStatus = Enums<"session_status_enum">;
 export type AttemptVerdict = Enums<"attempt_verdict_enum">;
@@ -126,7 +129,7 @@ export interface UpdateQuestionCommand {
   question_text?: string;
   correct_answer?: Partial<CorrectAnswerDTO>;
   difficulty_score?: number;
-  status?: QuestionStatus;
+  status?: WritableQuestionStatus;
   category_ids?: string[];
   tag_ids?: string[];
   change_reason: string;

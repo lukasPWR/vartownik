@@ -93,7 +93,7 @@ onUnmounted(() => {
     <p class="font-semibold text-destructive">{{ message.title }}</p>
     <p class="mt-1 text-sm text-muted-foreground">{{ message.description }}</p>
 
-    <div class="mt-4 flex gap-2">
+    <div class="mt-4 flex flex-wrap gap-2">
       <Button :disabled="retryDisabled" @click="handleRetry">
         <span v-if="retryDisabled">Spróbuj ponownie ({{ retryCooldown }}s)</span>
         <span v-else>Spróbuj ponownie</span>

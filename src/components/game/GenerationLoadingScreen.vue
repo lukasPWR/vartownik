@@ -24,9 +24,11 @@ const emit = defineEmits<{
 <template>
   <div class="flex min-h-screen flex-col items-center justify-center gap-8 p-6">
     <div class="w-full max-w-md space-y-8 text-center">
-      <h1 class="text-2xl font-bold tracking-tight">Przygotowuję Twój quiz</h1>
+      <h1 class="text-2xl font-bold tracking-tight">
+        {{ props.hasError ? "Nie udało się przygotować quizu" : "Przygotowuję Twój quiz" }}
+      </h1>
 
-      <div role="status" aria-live="polite" aria-atomic="true">
+      <div v-if="!props.hasError" role="status" aria-live="polite" aria-atomic="true">
         <LoadingPhaseIndicator :phase="props.phase" :elapsed-seconds="props.elapsedSeconds" />
       </div>
 

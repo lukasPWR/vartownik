@@ -5,6 +5,7 @@ import {
   BadRequestError,
   BatchNotFoundError,
   BatchNotSuccessError,
+  ConflictError,
   NotFoundError,
   UnprocessableEntityError,
 } from "@/lib/errors";
@@ -186,6 +187,12 @@ export async function createSession(
     .single();
 
   if (insertError || !session) {
+    if (insertError?.code === "P4090") {
+      throw new ConflictError("Generation batch contains an unavailable question. Generate a new batch.");
+    }
+    if (insertError?.code === "P4220") {
+      throw new UnprocessableEntityError("Generation batch rounds mapping is incomplete or inconsistent.");
+    }
     console.error("[sessions.service] Failed to insert session", { userId, generation_batch_id, insertError });
     throw new Error("Failed to create session.");
   }

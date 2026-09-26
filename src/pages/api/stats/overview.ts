@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 
 import type { StatsOverviewDTO } from "@/types";
+import { PENDING_REVIEW_STATUS } from "@/lib/question-status";
 
 export const prerender = false;
 
@@ -49,7 +50,7 @@ export const GET: APIRoute = async ({ locals }) => {
         .from("questions")
         .select("id", { count: "exact", head: true })
         .eq("user_id", userId)
-        .eq("status", "flagged"),
+        .eq("status", PENDING_REVIEW_STATUS),
     ]);
 
     for (const result of [totalResult, knewResult, didNotKnowResult, sessionsResult, flaggedResult]) {

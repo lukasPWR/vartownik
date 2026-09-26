@@ -6,6 +6,7 @@ import StatsOverviewWidget from "@/components/dashboard/StatsOverviewWidget.astr
 import PendingReviewsWidget from "@/components/dashboard/PendingReviewsWidget.astro";
 import CategoryRadarChart from "@/components/dashboard/CategoryRadarChart.vue";
 import RecentSessionsTable from "@/components/dashboard/RecentSessionsTable.vue";
+import { PENDING_REVIEW_STATUS } from "@/lib/question-status";
 
 import type { StatsOverviewDTO, CategoryStatsResponseDTO, SessionsResponseDTO, PendingQuestionDTO } from "@/types";
 
@@ -32,7 +33,7 @@ const [overviewResult, categoriesResult, sessionsResult, flaggedResult] = await 
     headers: { cookie: Astro.request.headers.get("cookie") ?? "" },
   }).then((r) => (r.ok ? (r.json() as Promise<SessionsResponseDTO>) : Promise.reject(r.status))),
 
-  fetch(`${baseUrl}/api/questions?status=flagged&limit=5`, {
+  fetch(`${baseUrl}/api/questions?status=${PENDING_REVIEW_STATUS}&limit=5`, {
     headers: { cookie: Astro.request.headers.get("cookie") ?? "" },
   }).then((r) =>
     r.ok
@@ -60,20 +61,20 @@ const totalFlagged = flaggedData?.pagination?.total ?? 0;
 ---
 
 <Layout title="Dashboard — VARtownik">
-  <div class="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 px-4 py-6">
+  <div class="min-h-screen bg-background px-4 py-6 text-foreground">
     <div class="mx-auto max-w-6xl">
       <Topbar />
 
       <!-- Page header -->
       <header class="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-white">Dashboard</h1>
-          <p class="mt-1 text-sm text-white/60">
-            Witaj, <span class="font-medium text-white">{user?.email}</span>
+          <h1 class="text-2xl font-bold text-foreground">Dashboard</h1>
+          <p class="mt-1 text-sm text-muted-foreground">
+            Witaj, <span class="font-medium text-foreground">{user?.email}</span>
           </p>
         </div>
         <div
-          class="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/50"
+          class="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground"
           title="Widzisz tylko swoje dane"
         >
           <svg

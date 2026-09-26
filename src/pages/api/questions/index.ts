@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { ConflictError, StorageLimitError } from "@/lib/errors";
 import { createQuestion, listQuestions } from "@/lib/services/questions.service";
+import { QuestionStatusSchema } from "@/lib/question-status";
 
 export const prerender = false;
 
@@ -13,7 +14,7 @@ export const prerender = false;
 const ListQuestionsSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(["active", "flagged", "needs_review", "verified", "archived"]).optional(),
+  status: QuestionStatusSchema.optional(),
   generated_type: z.enum(["manual", "ai"]).optional(),
   category_id: z.string().uuid().optional(),
   tag_id: z.string().uuid().optional(),
@@ -43,13 +44,11 @@ const CreateQuestionBodySchema = z.object({
 });
 
 export const POST: APIRoute = async ({ locals, request }) => {
-  // if (!locals.user) {
-  //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //     status: 401,
-  //     headers: { "Content-Type": "application/json" },
-  //   });
-  // }
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
+  if (!locals.user)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
   let body: unknown;
   try {
     body = await request.json();
@@ -72,7 +71,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   }
 
   try {
-    const result = await createQuestion(locals.supabase, locals.user?.id ?? TEST_USER_ID, parsed.data);
+    const result = await createQuestion(locals.supabase, locals.user.id, parsed.data);
     return new Response(JSON.stringify(result), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -90,7 +89,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    console.error("[POST /api/questions] Unexpected error", { userId: TEST_USER_ID, err });
+    console.error("[POST /api/questions] Unexpected error", { userId: locals.user.id, err });
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -103,15 +102,12 @@ export const POST: APIRoute = async ({ locals, request }) => {
 // ---------------------------------------------------------------------------
 
 export const GET: APIRoute = async ({ locals, url }) => {
-  // AUTH DISABLED FOR TESTING — restore before production
-  // if (!locals.user) {
-  //   return new Response(JSON.stringify({ error: "Unauthorized" }), {
-  //     status: 401,
-  //     headers: { "Content-Type": "application/json" },
-  //   });
-  // }
-  const TEST_USER_ID = "fe165a38-12c5-4f21-8c30-d238798d12b6";
-  const userId = locals.user?.id ?? TEST_USER_ID;
+  if (!locals.user)
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  const userId = locals.user.id;
 
   const rawParams = Object.fromEntries(url.searchParams.entries());
   const parsed = ListQuestionsSchema.safeParse(rawParams);

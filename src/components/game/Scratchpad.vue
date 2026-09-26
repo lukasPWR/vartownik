@@ -52,19 +52,23 @@ watch(
 
 <template>
   <div class="space-y-2">
-    <label for="scratchpad" class="text-sm font-medium text-foreground"> Twoja odpowiedź </label>
+    <label for="scratchpad" class="text-sm font-medium text-foreground">Twoja odpowiedź</label>
     <textarea
       id="scratchpad"
       ref="scratchpadRef"
       :value="props.modelValue"
       :readonly="props.disabled"
       :aria-disabled="props.disabled"
+      :aria-describedby="props.disabled ? 'scratchpad-status' : undefined"
       :aria-label="props.disabled ? 'Pole odpowiedzi (zablokowane)' : 'Wpisz swoją odpowiedź'"
       placeholder="Wpisz tutaj swoją odpowiedź…"
       rows="4"
-      class="w-full resize-none rounded-lg border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed"
-      :class="{ 'opacity-60 cursor-not-allowed bg-muted': props.disabled }"
+      class="w-full resize-none rounded-lg border border-input bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      :class="{ 'cursor-not-allowed bg-muted': props.disabled }"
       @input="handleInput"
     />
+    <p v-if="props.disabled" id="scratchpad-status" class="text-sm text-muted-foreground">
+      Pole odpowiedzi jest zablokowane.
+    </p>
   </div>
 </template>

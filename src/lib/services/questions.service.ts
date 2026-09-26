@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { SupabaseClientType } from "@/db/supabase.client";
 import { ConflictError, NotFoundError, StorageLimitError } from "@/lib/errors";
+import { canTransitionQuestionStatus, QuestionStatusSchema } from "@/lib/question-status";
 import type {
   CreateQuestionCommand,
   UpdateQuestionCommand,
@@ -325,6 +326,24 @@ export async function updateQuestion(
   // Fetch current state — also validates ownership (throws NotFoundError if not found)
   const currentQuestion = await getQuestionById(supabase, userId, id);
 
+  if (status !== undefined) {
+    const currentStatus = QuestionStatusSchema.safeParse(currentQuestion.status);
+    if (!currentStatus.success || !canTransitionQuestionStatus(currentStatus.data, status)) {
+      throw new ConflictError("Invalid question status transition.");
+    }
+    if (
+      currentStatus.data === "flagged" &&
+      status === "verified" &&
+      (question_text !== undefined ||
+        correct_answer !== undefined ||
+        difficulty_score !== undefined ||
+        category_ids !== undefined ||
+        tag_ids !== undefined)
+    ) {
+      throw new ConflictError("Resolve a flagged question separately from edits.");
+    }
+  }
+
   // Build the direct-column update payload
   const updatePayload: TablesUpdate<"questions"> = {};
   if (question_text !== undefined) updatePayload.question_text = question_text;
@@ -341,6 +360,7 @@ export async function updateQuestion(
       .update(updatePayload)
       .eq("id", id)
       .eq("user_id", userId);
+    if (updateError?.code === "23514") throw new ConflictError("Invalid question status transition.");
     if (updateError) throw updateError;
   }
 
