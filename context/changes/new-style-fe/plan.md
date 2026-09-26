@@ -242,7 +242,7 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [x] 2.1 Uruchomić lint i build oraz skan starych akcentów w publicznych widokach i auth
+- [x] 2.1 Uruchomić lint i build oraz skan starych akcentów w publicznych widokach i auth — 6b5b55d
 
 #### Manual
 
@@ -253,7 +253,7 @@ Brak migracji danych lub zmian API. Cofnięcie tej zmiany to przywrócenie poprz
 
 #### Automated
 
-- [ ] 3.1 Uruchomić lint i build oraz skan kolorów dashboardu i Chart.js
+- [x] 3.1 Uruchomić lint i build oraz skan kolorów dashboardu i Chart.js
 
 #### Manual
 

@@ -29,6 +29,21 @@ const fromDate = ref<string>(thirtyDaysAgo);
 const toDate = ref<string>(today);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
+const loadedRange = ref({ from: thirtyDaysAgo, to: today });
+const isCurrentRange = computed(
+  () => loadedRange.value.from === fromDate.value && loadedRange.value.to === toDate.value
+);
+
+interface ChartColors {
+  chart: string;
+  foreground: string;
+  mutedForeground: string;
+  border: string;
+  card: string;
+  primaryForeground: string;
+}
+
+const chartColors = ref<ChartColors | null>(null);
 
 // ---------------------------------------------------------------------------
 // Date validation
@@ -54,13 +69,15 @@ const dateError = computed<string | null>(() => {
 async function fetchCategoryStats(): Promise<void> {
   if (dateError.value) return;
 
+  const requestedFrom = fromDate.value;
+  const requestedTo = toDate.value;
   isLoading.value = true;
   error.value = null;
 
   try {
     const params = new URLSearchParams();
-    if (fromDate.value) params.set("from", fromDate.value);
-    if (toDate.value) params.set("to", toDate.value);
+    if (requestedFrom) params.set("from", requestedFrom);
+    if (requestedTo) params.set("to", requestedTo);
 
     const res = await fetch(`/api/stats/categories?${params.toString()}`);
 
@@ -75,6 +92,7 @@ async function fetchCategoryStats(): Promise<void> {
 
     const json: CategoryStatsResponseDTO = await res.json();
     chartData.value = json.data;
+    loadedRange.value = { from: requestedFrom, to: requestedTo };
   } catch (err) {
     error.value = "Nie udało się załadować danych wykresu. Spróbuj ponownie.";
     console.error("[CategoryRadarChart] fetch error", err);
@@ -97,7 +115,17 @@ function scheduleFetch(): void {
 watch([fromDate, toDate], scheduleFetch);
 
 onMounted(() => {
-  // Initial data already in props — no fetch needed on mount
+  const styles = window.getComputedStyle(document.documentElement);
+  const token = (name: string) => styles.getPropertyValue(name).trim();
+
+  chartColors.value = {
+    chart: token("--chart-1"),
+    foreground: token("--foreground"),
+    mutedForeground: token("--muted-foreground"),
+    border: token("--border"),
+    card: token("--card"),
+    primaryForeground: token("--primary-foreground"),
+  };
 });
 
 // ---------------------------------------------------------------------------
@@ -110,18 +138,18 @@ const radarChartData = computed(() => ({
     {
       label: "Skuteczność (%)",
       data: chartData.value.map((c) => c.accuracy_percent),
-      backgroundColor: "rgba(139, 92, 246, 0.2)",
-      borderColor: "rgba(139, 92, 246, 0.8)",
+      backgroundColor: `color-mix(in srgb, ${chartColors.value?.chart} 18%, transparent)`,
+      borderColor: chartColors.value?.chart,
       borderWidth: 2,
-      pointBackgroundColor: "rgba(139, 92, 246, 1)",
-      pointBorderColor: "#fff",
-      pointHoverBackgroundColor: "#fff",
-      pointHoverBorderColor: "rgba(139, 92, 246, 1)",
+      pointBackgroundColor: chartColors.value?.chart,
+      pointBorderColor: chartColors.value?.card,
+      pointHoverBackgroundColor: chartColors.value?.card,
+      pointHoverBorderColor: chartColors.value?.chart,
     },
   ],
 }));
 
-const radarOptions = {
+const radarOptions = computed(() => ({
   responsive: true,
   maintainAspectRatio: true,
   scales: {
@@ -130,57 +158,66 @@ const radarOptions = {
       max: 100,
       ticks: {
         stepSize: 20,
-        color: "rgba(255,255,255,0.4)",
+        color: chartColors.value?.mutedForeground,
         backdropColor: "transparent",
       },
-      grid: { color: "rgba(255,255,255,0.1)" },
-      angleLines: { color: "rgba(255,255,255,0.1)" },
-      pointLabels: { color: "rgba(255,255,255,0.7)", font: { size: 12 } },
+      grid: { color: chartColors.value?.border },
+      angleLines: { color: chartColors.value?.border },
+      pointLabels: { color: chartColors.value?.foreground, font: { size: 12 } },
     },
   },
   plugins: {
     legend: { display: false },
     tooltip: {
+      backgroundColor: chartColors.value?.foreground,
+      titleColor: chartColors.value?.primaryForeground,
+      bodyColor: chartColors.value?.primaryForeground,
+      borderColor: chartColors.value?.border,
+      borderWidth: 1,
       callbacks: {
         label: (ctx: { parsed: { r: number } }) => ` ${ctx.parsed.r.toFixed(1)}%`,
       },
     },
   },
-};
+}));
 </script>
 
 <template>
   <section
     aria-labelledby="radar-chart-heading"
-    class="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm"
+    class="rounded-xl border border-border bg-card p-6 text-card-foreground shadow-sm"
   >
-    <h2 id="radar-chart-heading" class="mb-4 text-lg font-semibold text-white">Skuteczność per kategoria</h2>
+    <h2 id="radar-chart-heading" class="mb-4 text-lg font-semibold text-card-foreground">Skuteczność per kategoria</h2>
 
     <!-- Date filters -->
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <div class="flex flex-col gap-1">
-        <label for="radar-from" class="text-xs text-white/60">Od</label>
+        <label for="radar-from" class="text-xs text-muted-foreground">Od</label>
         <input
           id="radar-from"
           v-model="fromDate"
           type="date"
           :max="today"
-          class="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+          :aria-invalid="!!dateError"
+          :aria-describedby="dateError ? 'radar-date-error' : undefined"
+          class="rounded-md border border-input bg-card px-3 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-destructive"
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label for="radar-to" class="text-xs text-white/60">Do</label>
+        <label for="radar-to" class="text-xs text-muted-foreground">Do</label>
         <input
           id="radar-to"
           v-model="toDate"
           type="date"
           :max="today"
-          class="rounded-md border border-white/20 bg-white/5 px-3 py-1.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+          :aria-invalid="!!dateError"
+          :aria-describedby="dateError ? 'radar-date-error' : undefined"
+          class="rounded-md border border-input bg-card px-3 py-1.5 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-destructive"
         />
       </div>
-      <div v-if="isLoading" class="flex items-center gap-2 text-sm text-white/50" aria-live="polite">
+      <div v-if="isLoading" class="flex items-center gap-2 text-sm text-muted-foreground" aria-live="polite">
         <span
-          class="size-4 animate-spin rounded-full border-2 border-white/30 border-t-purple-400"
+          class="size-4 animate-spin rounded-full border-2 border-muted border-t-foreground"
           role="status"
           aria-label="Ładowanie danych wykresu"
         ></span>
@@ -189,26 +226,51 @@ const radarOptions = {
     </div>
 
     <!-- Validation error -->
-    <p v-if="dateError" role="alert" class="mb-3 text-sm text-red-400">{{ dateError }}</p>
+    <p v-if="dateError" id="radar-date-error" role="alert" class="mb-3 text-sm text-destructive">
+      {{ dateError }}
+    </p>
 
     <!-- Fetch error -->
     <div
       v-if="error"
       role="alert"
-      class="mb-3 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300"
+      class="mb-3 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
     >
       <span aria-hidden="true">⚠</span>
       {{ error }}
     </div>
 
     <!-- Empty state -->
-    <p v-if="!isLoading && !error && chartData.length === 0" class="text-sm text-white/50">
+    <p
+      v-if="!isLoading && !error && !dateError && isCurrentRange && chartData.length === 0"
+      class="text-sm text-muted-foreground"
+    >
       Brak danych kategorii dla wybranego okresu.
     </p>
 
+    <p
+      v-if="!isCurrentRange && !isLoading && !dateError && !error"
+      class="text-sm text-muted-foreground"
+      aria-live="polite"
+    >
+      Aktualizowanie zakresu dat…
+    </p>
+
     <!-- Chart -->
-    <div v-if="chartData.length > 0" class="mx-auto max-w-sm">
+    <div
+      v-if="chartColors && chartData.length > 0 && isCurrentRange && !isLoading && !dateError && !error"
+      class="mx-auto max-w-sm"
+    >
       <Radar :data="radarChartData" :options="radarOptions" aria-label="Wykres radarowy skuteczności per kategoria" />
     </div>
+    <ul
+      v-if="chartData.length > 0 && isCurrentRange && !isLoading && !dateError && !error"
+      class="mt-4 space-y-1 text-sm text-foreground"
+      aria-label="Skuteczność według kategorii"
+    >
+      <li v-for="category in chartData" :key="category.category_name">
+        {{ category.category_name }} — {{ category.accuracy_percent.toFixed(1) }}%
+      </li>
+    </ul>
   </section>
 </template>
