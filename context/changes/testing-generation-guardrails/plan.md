@@ -369,9 +369,9 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [x] 1.1 Uruchomić Vitest Node dla współlokowanych testów bez jsdom i prawdziwych sekretów
-- [x] 1.2 Udowodnić allowlistę i limity admission 6 prób, 4096 tokenów, 40 sekund i 0,02 USD
-- [x] 1.3 Uruchomić lint i build po dodaniu konfiguracji oraz typów testowych
+- [x] 1.1 Uruchomić Vitest Node dla współlokowanych testów bez jsdom i prawdziwych sekretów — 2faa14e
+- [x] 1.2 Udowodnić allowlistę i limity admission 6 prób, 4096 tokenów, 40 sekund i 0,02 USD — 2faa14e
+- [x] 1.3 Uruchomić lint i build po dodaniu konfiguracji oraz typów testowych — 2faa14e
 
 #### Manual
 
@@ -381,10 +381,10 @@ Podłączyć guardraile do publicznej trasy i klienta gry, przywrócić auth ora
 
 #### Automated
 
-- [ ] 2.1 Anulować never-settling provider przed deadlinem bez uruchomienia kolejnego chunku
-- [ ] 2.2 Egzekwować maksymalnie 6 prób i 2 retry łącznie bez retry trwałego 4xx
-- [ ] 2.3 Agregować usage i koszt odpowiedzi odrzuconych po walidacji biznesowej
-- [ ] 2.4 Uruchomić pełne testy, lint i build bez sieci oraz realnych timeoutów
+- [x] 2.1 Anulować never-settling provider przed deadlinem bez uruchomienia kolejnego chunku
+- [x] 2.2 Egzekwować maksymalnie 6 prób i 2 retry łącznie bez retry trwałego 4xx
+- [x] 2.3 Agregować usage i koszt odpowiedzi odrzuconych po walidacji biznesowej
+- [x] 2.4 Uruchomić pełne testy, lint i build bez sieci oraz realnych timeoutów
 
 #### Manual
 
