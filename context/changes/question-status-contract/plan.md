@@ -214,8 +214,8 @@ Migracja danych jest jednokierunkowa: `needs_review` staje się `flagged`, bez u
 
 #### Automated
 
-- [x] 3.1 Test zgodności licznika i paginowanej listy `flagged`
-- [x] 3.2 Uruchomić `npm test`, `npm run lint` i `npm run build`
+- [x] 3.1 Test zgodności licznika i paginowanej listy `flagged` — 1d1fec1
+- [x] 3.2 Uruchomić `npm test`, `npm run lint` i `npm run build` — 1d1fec1
 
 #### Manual
 

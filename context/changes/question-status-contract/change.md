@@ -1,7 +1,7 @@
 ﻿---
 change_id: question-status-contract
 title: Ustal minimalna umowa statusow pytan
-status: implementing
+status: implemented
 created: 2026-09-26
 updated: 2026-09-26
 archived_at: null
