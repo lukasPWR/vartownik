@@ -6,16 +6,16 @@ export interface AiMessage {
 /**
  * Builds the system + user messages for quiz question generation (prompt version v1).
  *
- * The AI is expected to return a JSON array of question objects matching the schema:
+ * The AI is expected to return a JSON object containing question objects matching the schema:
  * ```json
- * [
- *   {
+ * {
+ *   "questions": [{
  *     "question_text": "string",
  *     "correct_answer": { "primary": "string", "synonyms": ["string"] },
  *     "difficulty_score": 0.0–1.0,
  *     "category_slug": "string"
- *   }
- * ]
+ *   }]
+ * }
  * ```
  *
  * Category slugs must be one of:
@@ -26,15 +26,17 @@ export function buildPrompt(count: number): AiMessage[] {
 Jesteś ekspertem historii piłki nożnej i autorem pytań do najbardziej prestiżowych quizów piłkarskich w Polsce (np. PilkarskiQuiz.pl). Twoim zadaniem jest generowanie pytań o wysokim stopniu trudności, które wymagają konkretnej wiedzy historycznej, statystycznej lub analitycznej.
 
 ### FORMAT WYJŚCIOWY
-Zawsze zwracaj dane jako tablicę JSON (array of objects). Każdy obiekt musi mieć dokładnie tę strukturę — żadnych dodatkowych pól, żadnego markdown, żadnych bloków kodu:
+Zawsze zwracaj dane jako obiekt JSON z polem "questions" zawierającym tablicę pytań. Każdy element tablicy musi mieć dokładnie tę strukturę — żadnych dodatkowych pól, żadnego markdown, żadnych bloków kodu:
 {
-  "question_text": "Treść pytania po polsku",
-  "correct_answer": {
-    "primary": "Kanoniczna, pełna odpowiedź",
-    "synonyms": ["alternatywna akceptowana forma", "skrót lub wariant pisowni"]
-  },
-  "difficulty_score": <liczba zmiennoprzecinkowa 0.0–1.0>,
-  "category_slug": "<jedna z: historia | trofea | zawodnicy | trenerzy | stadiony | zasady | rekordy | transfery>"
+  "questions": [{
+    "question_text": "Treść pytania po polsku",
+    "correct_answer": {
+      "primary": "Kanoniczna, pełna odpowiedź",
+      "synonyms": ["alternatywna akceptowana forma", "skrót lub wariant pisowni"]
+    },
+    "difficulty_score": <liczba zmiennoprzecinkowa 0.0–1.0>,
+    "category_slug": "<jedna z: historia | trofea | zawodnicy | trenerzy | stadiony | zasady | rekordy | transfery>"
+  }]
 }
 
 ### ZASADY GENEROWANIA PYTAŃ
@@ -48,7 +50,7 @@ Zawsze zwracaj dane jako tablicę JSON (array of objects). Każdy obiekt musi mi
 5. RÓŻNORODNOŚĆ: Dbaj o zróżnicowanie kategorii i poziomów trudności w całym zbiorze pytań.
 
 ### PRZYKŁADY (FEW-SHOT)
-[
+{"questions": [
   {
     "question_text": "Jak nazywa się pierwszy klub piłkarski założony na terenie miasta Poznań?",
     "correct_answer": {
@@ -76,10 +78,10 @@ Zawsze zwracaj dane jako tablicę JSON (array of objects). Każdy obiekt musi mi
     "difficulty_score": 0.7,
     "category_slug": "rekordy"
   }
-]`;
+]}`;
 
   const userPrompt = `Wygeneruj dokładnie ${count} nowych, unikalnych pytań quizowych zgodnie z powyższymi zasadami i formatem.
-Zwróć wyłącznie tablicę JSON — bez żadnego dodatkowego tekstu przed ani po.`;
+Zwróć wyłącznie obiekt JSON z polem "questions" — bez żadnego dodatkowego tekstu przed ani po.`;
 
   return [
     { role: "system", content: systemPrompt },

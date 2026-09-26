@@ -19,7 +19,7 @@ export default defineConfig({
     schema: {
       SUPABASE_URL: envField.string({ context: "server", access: "secret" }),
       SUPABASE_KEY: envField.string({ context: "server", access: "secret" }),
-      GOOGLE_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
+      OPENAI_API_KEY: envField.string({ context: "server", access: "secret", optional: true }),
     },
   },
 });

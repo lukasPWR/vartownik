@@ -2,9 +2,9 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 
 import type { SupabaseClientType } from "@/db/supabase.client";
-import { callGoogle } from "@/lib/google.client";
+import { callOpenAI } from "@/lib/openai.client";
 import { buildPrompt } from "@/lib/prompts/quiz-generation.v1";
-import { AiParseError, NotFoundError, OpenRouterError, RateLimitError } from "@/lib/errors";
+import { AiParseError, AiProviderError, NotFoundError, RateLimitError } from "@/lib/errors";
 import type {
   CreateGenerationBatchCommand,
   GenerationBatchDTO,
@@ -34,13 +34,15 @@ const AiQuestionSchema = z.object({
   question_text: z.string().min(5).max(1000),
   correct_answer: z.object({
     primary: z.string().min(1).max(1000),
-    synonyms: z.array(z.string()).default([]),
+    synonyms: z.array(z.string()),
   }),
   difficulty_score: z.number().min(0).max(1),
   category_slug: z.string().min(1).max(100),
 });
 
-const AiResponseSchema = z.array(AiQuestionSchema);
+const AiResponseSchema = z.object({
+  questions: z.array(AiQuestionSchema),
+});
 
 type AiQuestion = z.infer<typeof AiQuestionSchema>;
 
@@ -50,7 +52,7 @@ function delay(ms: number): Promise<void> {
   });
 }
 
-function isRetryableProviderError(error: OpenRouterError): boolean {
+function isRetryableProviderError(error: AiProviderError): boolean {
   return error.statusCode !== undefined && RETRYABLE_PROVIDER_STATUS_CODES.has(error.statusCode);
 }
 
@@ -177,7 +179,7 @@ async function finalizeBatch(
 }
 
 // ---------------------------------------------------------------------------
-// Google AI call with retry
+// OpenAI call with retry
 // ---------------------------------------------------------------------------
 
 /**
@@ -204,18 +206,12 @@ async function callAiWithRetry(
     }
 
     try {
-      const { content, estimatedCostUsd } = await callGoogle(model, messages);
+      const { data, estimatedCostUsd } = await callOpenAI(model, messages, AiResponseSchema);
+      const validated = data.questions;
 
-      // Strip optional markdown code fences the model may add despite instructions
-      const cleaned = content
-        .trim()
-        .replace(/^```(?:json)?\s*/i, "")
-        .replace(/\s*```$/i, "");
-
-      console.log(`[generation-batch] Raw AI response (first 500 chars):`, content.substring(0, 500));
-
-      const parsed: unknown = JSON.parse(cleaned);
-      const validated = AiResponseSchema.parse(parsed);
+      if (validated.length !== count) {
+        throw new Error(`OpenAI returned ${validated.length} questions instead of ${count}`);
+      }
 
       console.log(`[generation-batch] Generated ${validated.length} question(s):`);
       validated.forEach((q, i) => {
@@ -225,7 +221,7 @@ async function callAiWithRetry(
 
       return { questions: validated, estimatedCostUsd, retryCount };
     } catch (error) {
-      if (error instanceof OpenRouterError && !isRetryableProviderError(error)) {
+      if (error instanceof AiProviderError && !isRetryableProviderError(error)) {
         throw error;
       }
 
