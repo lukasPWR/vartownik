@@ -80,3 +80,60 @@ export class UnprocessableEntityError extends Error {
     this.name = "UnprocessableEntityError";
   }
 }
+
+export type GenerationGuardrailErrorCode =
+  | "admission_rejected"
+  | "deadline_exceeded"
+  | "client_cancelled"
+  | "budget_exhausted"
+  | "persistence_failed";
+
+/** A generation request does not match the allowlisted production contract. */
+export class GenerationAdmissionError extends Error {
+  readonly code = "admission_rejected" as const;
+
+  constructor(message = "Generation request was rejected by the admission policy.") {
+    super(message);
+    this.name = "GenerationAdmissionError";
+  }
+}
+
+/** The aggregate generation deadline elapsed before the batch completed. */
+export class GenerationDeadlineError extends Error {
+  readonly code = "deadline_exceeded" as const;
+
+  constructor(message = "Generation deadline exceeded.") {
+    super(message);
+    this.name = "GenerationDeadlineError";
+  }
+}
+
+/** The caller cancelled generation before the batch completed. */
+export class GenerationCancelledError extends Error {
+  readonly code = "client_cancelled" as const;
+
+  constructor(message = "Generation was cancelled.") {
+    super(message);
+    this.name = "GenerationCancelledError";
+  }
+}
+
+/** A batch would exceed, or has exhausted, one of its execution budgets. */
+export class GenerationBudgetExceededError extends Error {
+  readonly code = "budget_exhausted" as const;
+
+  constructor(message = "Generation budget exhausted.") {
+    super(message);
+    this.name = "GenerationBudgetExceededError";
+  }
+}
+
+/** A durable generation lifecycle transition could not be persisted. */
+export class GenerationPersistenceError extends Error {
+  readonly code = "persistence_failed" as const;
+
+  constructor(message = "Generation state could not be persisted.") {
+    super(message);
+    this.name = "GenerationPersistenceError";
+  }
+}

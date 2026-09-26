@@ -1,5 +1,6 @@
 ---
 import type { PendingQuestionDTO } from "@/types";
+import { PENDING_REVIEW_STATUS } from "@/lib/question-status";
 
 interface Props {
   flaggedQuestions: PendingQuestionDTO[];
@@ -56,7 +57,7 @@ function truncate(text: string, max: number): string {
         </ul>
         {totalFlagged > 0 && (
           <a
-            href="/questions?status=flagged"
+            href={`/questions?status=${PENDING_REVIEW_STATUS}`}
             class="text-xs text-purple-300 hover:text-purple-100 hover:underline focus-visible:outline-none"
           >
             Zobacz wszystkie →

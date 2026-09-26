@@ -114,7 +114,9 @@ A user can review and correct their question bank from a dedicated management pa
 
 **Given** a logged-in user is on the question management page,
 **When** they want to fix an AI-generated question,
-**Then** they can find it (by flagged status), edit its text and answer, and change its status back to active.
+**Then** they can find it by `flagged` status, edit its text and answer, and explicitly resolve it to `verified`, including when no text edit is needed.
+
+**Status decision for US-03:** The earlier `flagged → active` wording is superseded by the F-02 status contract. A manually added question starts as `active`. An `archived` question returns to `active` only through an explicit restore action; editing or resolving a flag does not restore it.
 
 *Before this change: there was no question management UI.*
 
@@ -129,6 +131,7 @@ A user can review and correct their question bank from a dedicated management pa
 - [new] Gate: the "Next round" button is inactive until all 10 questions in the current round are marked (FR-008)
   > Socrates: Counter considered: "the gate is gameable — users can click all 'Wiedziałem' to skip." Resolution: kept; the product trusts the user's self-assessment (explicit design choice — no automatic validation). Gaming the gate undermines only the user's own training data.
 - [new] Per-question flagging from the round summary screen; flagged questions excluded from future quiz generation until resolved (FR-009)
+  > Delivery split: F-02 establishes the `flagged` status and exclusion contract; S-02 will add the summary screen action that records a flag.
   > Socrates: Counter considered: "flagging from the CRUD page is enough; don't add it to the game flow." Resolution: kept; the summary screen is the moment the user notices a problem. Requiring a separate CRUD visit creates friction that leads to unflagged errors staying in rotation.
 - [new] Round score persisted to the session record after all questions in the round are marked (FR-010)
 
@@ -136,11 +139,14 @@ A user can review and correct their question bank from a dedicated management pa
 
 - [new] Dedicated question management page showing the user's personal question bank (FR-011)
 - [new] User can manually add a new question (text, correct answer, category, difficulty score) (FR-012)
+  > S-05 provides the manual creation UI; a manually added question starts as `active`.
 - [new] User can edit an existing question's text, answer, category, or difficulty (FR-013)
 - [new] User can delete a question from their bank (FR-014)
 - [new] Dedicated "Flagged" tab within the management page; user can resolve or delete flagged questions; tab displays the count of unresolved flags as a badge (FR-015)
+  > F-02 provides the status transition and `flagged` read contract. S-04 provides the management tab, review UI, and badge. Resolving a flag is a separate action that sets `verified`; restoring `archived` explicitly sets `active`.
   > Socrates: Counter considered: "a filter on the main list achieves the same without a dedicated tab." Resolution: kept; a dedicated tab makes the review workflow explicit and surfaces the count of unfixed AI errors passively (badge on the tab label).
 - [new] Flagged questions are excluded from AI quiz generation until manually resolved (FR-016)
+  > F-02 blocks a new session from reusing a generated batch containing `flagged` or `archived` questions. The current generator creates new questions and does not select from the saved bank; future bank selection must include only `active` and `verified`.
   > Socrates: Counter considered: "excluding questions shrinks the pool and could degrade quiz quality." Resolution: kept; the whole point of flagging is to prevent known errors from appearing. Pool degradation is bounded — users typically flag a small fraction.
 - [new] User can attach an image to a manually added question via cloud storage (FR-017) — Priority: nice-to-have
 
@@ -173,11 +179,13 @@ A user can review and correct their question bank from a dedicated management pa
 
 ## Business Logic Changes
 
-No domain logic change. This is a completion change — the core quiz generation domain rule is preserved unchanged.
+**F-02 implementation boundary:** The current generator creates new questions and does not draw from the saved bank. F-02 enforces `active|verified` eligibility when a successful generated batch is reused to start a new session, while `flagged|archived` are excluded. S-02 supplies the user flag action in the round summary; S-04 supplies review and explicit resolution; S-05 supplies manual question creation. Future selection from the saved bank must use the same eligibility rule without changing the AI integration in this slice.
 
-**Existing rule (preserved):** VARtownik assembles a balanced, expert-difficulty question set from the user's personal question bank on demand. The rule consumes: a set of predefined categories with fixed weights (Ekstraklasa, Historia MŚ/Euro, Statystyki, Piłka zagraniczna, Reprezentacja Polski), a target of 4 rounds with 10 questions each, and the user's flagged-question exclusion list. It produces 40 questions grouped into 4 rounds, with category distribution matching the defined weights within each round, generated in a single AI generation call at expert level (minimum two identifying parameters per question: e.g. player name + year + club). On a malformed AI response, the rule retries up to 2 times before surfacing an error to the user. The user encounters the rule each time they press "Generate" — the loading screen is the system executing this rule.
+The quiz generator, prompt, retry policy, and 40-question distribution remain unchanged. This slice adds a status eligibility guard when a successful batch is reused for a new session.
 
-**Delta:** The flagged-question exclusion list is now actively enforced (FR-016). This is an application of the existing rule's stated input — not a change to the rule itself.
+**Planned bank-selection rule (not yet implemented):** VARtownik assembles a balanced, expert-difficulty question set from the user's personal question bank on demand. The rule consumes: a set of predefined categories with fixed weights (Ekstraklasa, Historia MŚ/Euro, Statystyki, Piłka zagraniczna, Reprezentacja Polski), a target of 4 rounds with 10 questions each, and the user's flagged-question exclusion list. It produces 40 questions grouped into 4 rounds, with category distribution matching the defined weights within each round, generated in a single AI generation call at expert level (minimum two identifying parameters per question: e.g. player name + year + club). On a malformed AI response, the rule retries up to 2 times before surfacing an error to the user. The user encounters the rule each time they press "Generate" — the loading screen is the system executing this rule.
+
+**Current delta:** A new session cannot reuse a successful batch once one of its questions is lagged or rchived. Future selection from the saved bank must admit only ctive or erified.
 
 ---
 

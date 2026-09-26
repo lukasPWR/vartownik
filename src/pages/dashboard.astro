@@ -6,6 +6,7 @@ import StatsOverviewWidget from "@/components/dashboard/StatsOverviewWidget.astr
 import PendingReviewsWidget from "@/components/dashboard/PendingReviewsWidget.astro";
 import CategoryRadarChart from "@/components/dashboard/CategoryRadarChart.vue";
 import RecentSessionsTable from "@/components/dashboard/RecentSessionsTable.vue";
+import { PENDING_REVIEW_STATUS } from "@/lib/question-status";
 
 import type { StatsOverviewDTO, CategoryStatsResponseDTO, SessionsResponseDTO, PendingQuestionDTO } from "@/types";
 
@@ -32,7 +33,7 @@ const [overviewResult, categoriesResult, sessionsResult, flaggedResult] = await 
     headers: { cookie: Astro.request.headers.get("cookie") ?? "" },
   }).then((r) => (r.ok ? (r.json() as Promise<SessionsResponseDTO>) : Promise.reject(r.status))),
 
-  fetch(`${baseUrl}/api/questions?status=flagged&limit=5`, {
+  fetch(`${baseUrl}/api/questions?status=${PENDING_REVIEW_STATUS}&limit=5`, {
     headers: { cookie: Astro.request.headers.get("cookie") ?? "" },
   }).then((r) =>
     r.ok
